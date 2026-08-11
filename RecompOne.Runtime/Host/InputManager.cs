@@ -187,8 +187,10 @@ internal static unsafe class InputManager
         var kb = _keyboard;
         if (kb == null)
         {
+#if !ANDROID
             Controller.State = 0xFFFF;
             Controller.State2 = 0xFFFF;
+#endif
             return;
         }
         Controller.State = KeyState(kb, ConfigManager.Game.Keys);

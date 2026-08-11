@@ -486,6 +486,7 @@ public static class HostWindow
                 gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), (void*)0);
                 gl.EnableVertexAttribArray(1);
                 gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+                gl.BindVertexArray(0);
                 gl.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
             }
         }

@@ -33,7 +33,7 @@ public sealed class GlDisplayRt
         gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
         gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
 #if ANDROID
-        gl.TexImage2D<ushort>(TextureTarget.Texture2D, 0, InternalFormat.Rgba, (uint)TexW, (uint)TexH, 0,
+        gl.TexImage2D<ushort>(TextureTarget.Texture2D, 0, InternalFormat.Rgb5A1, (uint)TexW, (uint)TexH, 0,
             PixelFormat.Rgba, PixelType.UnsignedShort5551, new ushort[TexW * TexH].AsSpan());
 #else
         gl.TexImage2D<ushort>(TextureTarget.Texture2D, 0, InternalFormat.Rgb5A1, (uint)TexW, (uint)TexH, 0,
