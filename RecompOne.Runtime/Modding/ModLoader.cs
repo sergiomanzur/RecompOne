@@ -344,9 +344,15 @@ public static class ModLoader
             }
             else
             {
+#if !ANDROID
                 Console.WriteLine($"[Mods] building {mod.Info.Id}...");
                 bytes = ModCompiler.Compile(mod.Info.Id, mod.Sources);
                 if (bytes == null) { mod.LoadError = "compilation failed, check the console"; return; }
+#else
+                Console.Error.WriteLine($"[Mods] {mod.Info.Id}: Mod runtime compilation is disabled on Android. Place precompiled mod DLLs in the .cache folder.");
+                mod.LoadError = "compilation disabled on Android";
+                return;
+#endif
                 try
                 {
                     Directory.CreateDirectory(_cacheDir);

@@ -70,6 +70,7 @@ public sealed class GlCore : IGpuBackend
         _gl.Uniform1(_gl.GetUniformLocation(_progPrim, "uDest"), 1);
         _gl.Uniform1(_gl.GetUniformLocation(_progPrim, "uExtTex"), 2);
         _gl.Uniform1(_gl.GetUniformLocation(_progPrim, "uScale"), GlVram.Scale);
+        _gl.Uniform4(_uBlendOpaque, 1f, 1f, 1f, 0f);
 
         _uPresentOrigin = _gl.GetUniformLocation(_progPresent, "uOrigin");
         _uPresentSize = _gl.GetUniformLocation(_progPresent, "uSize");

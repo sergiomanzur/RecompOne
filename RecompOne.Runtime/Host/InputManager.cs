@@ -79,7 +79,21 @@ internal static unsafe class InputManager
         PollGamepadEvents();
         PollKeyboard();
         PollGamepads();
+#if ANDROID
+        PollTouchScreen();
+#endif
         Controller.Connected2 = _pad1 != null || HasAnyKey(ConfigManager.Game.Keys2);
+    }
+
+    static void PollTouchScreen()
+    {
+        var m = _mouse;
+        if (m == null || !m.IsButtonPressed(MouseButton.Left)) return;
+        if (m.Position.Y < 150)
+        {
+            if (m.Position.X < 300) Controller.State &= unchecked((ushort)~Controller.L1);
+            else Controller.State &= unchecked((ushort)~Controller.R1);
+        }
     }
 
     public static int? GetFirstPressedPadButton(int pad = 0)

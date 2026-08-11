@@ -12,6 +12,8 @@ internal sealed class OutputPanel : IPanel
     static int _texW, _texH;
     static float _aspect = 4f / 3f;
 
+    public static uint TextureId => _texId;
+
     public static void SetTexture(uint id, int w, int h, float aspect = 0f)
         => (_texId, _texW, _texH, _aspect) = (id, w, h, aspect > 0f ? aspect : 4f / 3f);
     

@@ -113,7 +113,7 @@ internal static class GlShaders
         uniform sampler2D uExtTex;
         uniform ivec4 uTexWindow;
         uniform vec4  uBlend;
-        uniform vec4  uBlendOpaque = vec4(1.0, 1.0, 1.0, 0.0);
+        uniform vec4  uBlendOpaque;
         uniform float uSetMask;
         uniform int   uCheckMask;
         uniform int   uScale;
@@ -215,13 +215,52 @@ internal static class GlShaders
     static uint CompileStage(GL gl, ShaderType type, string src, string name, out string? log)
     {
         log = null;
+#if ANDROID
+        string originalSrc = src;
+        if (src.Contains("#version 330 core"))
+        {
+            src = src.Replace("#version 330 core", "#version 300 es\nprecision highp float;\nprecision highp int;");
+        }
+        else if (src.Contains("#version 300 es") && !src.Contains("precision highp float;"))
+        {
+            src = src.Replace("#version 300 es", "#version 300 es\nprecision highp float;\nprecision highp int;");
+        }
+
+        if (type == ShaderType.FragmentShader && src.Contains("index = 1"))
+        {
+            src = src.Replace("#version 300 es", "#version 300 es\n#extension GL_EXT_blend_func_extended : require");
+        }
+#endif
         uint sh = gl.CreateShader(type);
         gl.ShaderSource(sh, Ascii(src));
         gl.CompileShader(sh);
         gl.GetShader(sh, ShaderParameterName.CompileStatus, out int ok);
         if (ok == 0)
         {
+#if ANDROID
+            if (type == ShaderType.FragmentShader && (src.Contains("GL_EXT_blend_func_extended") || src.Contains("index = 1")))
+            {
+                gl.DeleteShader(sh);
+                sh = gl.CreateShader(type);
+                string fallbackSrc = originalSrc
+                    .Replace("#version 330 core", "#version 300 es\nprecision highp float;\nprecision highp int;")
+                    .Replace("layout(location = 0, index = 0)", "layout(location = 0)")
+                    .Replace("layout(location = 0, index = 1) out vec4 BlendColor;", "")
+                    .Replace("BlendColor = uBlend;", "")
+                    .Replace("BlendColor = uBlendOpaque;", "")
+                    .Replace("BlendColor = texel.a >= 0.5 ? uBlend : uBlendOpaque;", "");
+                if (fallbackSrc.Contains("#version 300 es") && !fallbackSrc.Contains("precision highp float;"))
+                {
+                    fallbackSrc = fallbackSrc.Replace("#version 300 es", "#version 300 es\nprecision highp float;\nprecision highp int;");
+                }
+                gl.ShaderSource(sh, Ascii(fallbackSrc));
+                gl.CompileShader(sh);
+                gl.GetShader(sh, ShaderParameterName.CompileStatus, out ok);
+                if (ok != 0) return sh;
+            }
+#endif
             log = $"{type}: {gl.GetShaderInfoLog(sh)}";
+            Console.WriteLine($"[GlBackend] compile failed ({name} {type}) {log}");
             gl.DeleteShader(sh);
             return 0;
         }
@@ -230,8 +269,8 @@ internal static class GlShaders
 
     public static uint Build(GL gl, string vsSrc, string fsSrc, string name)
     {
-        uint vs = CompileStage(gl, ShaderType.VertexShader, vsSrc, name);
-        uint fs = CompileStage(gl, ShaderType.FragmentShader, fsSrc, name);
+        uint vs = CompileStage(gl, ShaderType.VertexShader, vsSrc, name, out string? vsLog);
+        uint fs = CompileStage(gl, ShaderType.FragmentShader, fsSrc, name, out string? fsLog);
         if (vs == 0 || fs == 0) return 0;
 
         uint prog = gl.CreateProgram();
@@ -259,16 +298,6 @@ internal static class GlShaders
 
     static uint CompileStage(GL gl, ShaderType type, string src, string name)
     {
-        uint sh = gl.CreateShader(type);
-        gl.ShaderSource(sh, Ascii(src));
-        gl.CompileShader(sh);
-        gl.GetShader(sh, ShaderParameterName.CompileStatus, out int ok);
-        if (ok == 0)
-        {
-            Console.WriteLine($"[GlBackend] compile failed ({name} {type}) {gl.GetShaderInfoLog(sh)}");
-            gl.DeleteShader(sh);
-            return 0;
-        }
-        return sh;
+        return CompileStage(gl, type, src, name, out _);
     }
 }

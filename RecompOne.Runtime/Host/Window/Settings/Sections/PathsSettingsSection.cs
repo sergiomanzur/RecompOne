@@ -1,6 +1,8 @@
 using System.Numerics;
 using ImGuiNET;
+#if !ANDROID
 using NativeFileDialogNET;
+#endif
 using RecompOne.Runtime.Config;
 
 namespace RecompOne.Runtime.Host.Window;
@@ -86,6 +88,7 @@ internal sealed class PathsSettingsSection : ISettingsSection
         ImGui.SameLine();
         if (ImGui.Button($"Browse...{id}", new Vector2(browse, 0)))
         {
+#if !ANDROID
             string? dir = null;
             try
             {
@@ -105,6 +108,7 @@ internal sealed class PathsSettingsSection : ISettingsSection
                 result = picked;
                 changed = true;
             }
+#endif
         }
 
         return changed;

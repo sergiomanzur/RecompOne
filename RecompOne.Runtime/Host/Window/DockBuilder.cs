@@ -20,13 +20,22 @@ internal static unsafe class DockBuilder
 
     public static void SetupCenterLayout(uint dockId, Vector2 size, string windowName)
     {
-        igDockBuilderRemoveNode(dockId);
-        igDockBuilderAddNode(dockId, 0);
-        igDockBuilderSetNodeSize(dockId, size);
+#if !ANDROID
+        try
+        {
+            igDockBuilderRemoveNode(dockId);
+            igDockBuilderAddNode(dockId, 0);
+            igDockBuilderSetNodeSize(dockId, size);
 
-        var bytes = System.Text.Encoding.UTF8.GetBytes(windowName + "\0");
-        fixed (byte* p = bytes) igDockBuilderDockWindow(p, dockId);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(windowName + "\0");
+            fixed (byte* p = bytes) igDockBuilderDockWindow(p, dockId);
 
-        igDockBuilderFinish(dockId);
+            igDockBuilderFinish(dockId);
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"[Host] DockBuilder unavailable: {ex.Message}");
+        }
+#endif
     }
 }

@@ -1,7 +1,9 @@
 using System.Numerics;
 using System.Text;
 using ImGuiNET;
+#if !ANDROID
 using NativeFileDialogNET;
+#endif
 using RecompOne.Runtime.Config;
 
 namespace RecompOne.Runtime.Host.Window;
@@ -96,6 +98,7 @@ internal sealed class DiscPickerPopup : IPanel
 
     void OpenBrowser()
     {
+#if !ANDROID
         try
         {
             var currentPath = Encoding.UTF8.GetString(_pathBuf).TrimEnd('\0').Trim();
@@ -120,6 +123,9 @@ internal sealed class DiscPickerPopup : IPanel
         {
             _error = $"Failed to open th native picker: {ex.Message}";
         }
+#else
+        _error = "Native file picker not supported on Android. Please place disc files in disc/ folder.";
+#endif
     }
 
     void SetPathBuf(string path)
