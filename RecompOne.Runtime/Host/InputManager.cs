@@ -193,17 +193,28 @@ internal static unsafe class InputManager
 #endif
             return;
         }
+#if ANDROID
+        ushort k1 = KeyState(kb, ConfigManager.Game.Keys);
+        if (k1 != 0xFFFF) Controller.State &= k1;
+        ushort k2 = KeyState(kb, ConfigManager.Game.Keys2);
+        if (k2 != 0xFFFF) Controller.State2 &= k2;
+#else
         Controller.State = KeyState(kb, ConfigManager.Game.Keys);
         Controller.State2 = KeyState(kb, ConfigManager.Game.Keys2);
+#endif
     }
 
     static ushort KeyState(IKeyboard kb, KeyBindings cfg)
     {
         ushort s = 0xFFFF;
+        bool any = false;
         void B(string keyName, ushort bit)
         {
             if (Enum.TryParse<Key>(keyName, out var k) && kb.IsKeyPressed(k))
+            {
                 s &= (ushort)~bit;
+                any = true;
+            }
         }
 
         B(cfg.Cross,    Controller.Cross);
@@ -223,6 +234,9 @@ internal static unsafe class InputManager
         B(cfg.Left,     Controller.Left);
         B(cfg.Right,    Controller.Right);
 
+#if ANDROID
+        if (!any) return 0xFFFF;
+#endif
         return s;
     }
 

@@ -73,4 +73,10 @@ public class ViewConfig
         get => Math.Clamp(GetFloat("UiScale", 1f), 0.5f, 3f);
         set => SetFloat("UiScale", Math.Clamp(value, 0.5f, 3f));
     }
+
+    public int TouchControlMode
+    {
+        get => GetInt("TouchControlMode", 0); // 0 = D-Pad (Four Arrows), 1 = Virtual Joystick
+        set => SetInt("TouchControlMode", value);
+    }
 }

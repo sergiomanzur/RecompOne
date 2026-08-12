@@ -11,7 +11,7 @@ using Android.Media;
 
 namespace RecompOne.Runtime.Host;
 
-internal static unsafe class Audio
+public static unsafe class Audio
 {
 #if ANDROID
     private static AudioTrack? _track;
@@ -76,10 +76,29 @@ internal static unsafe class Audio
         }
     }
 
+    private static volatile bool _isPaused;
+
+    public static void Pause()
+    {
+        _isPaused = true;
+        try { _track?.Pause(); } catch { }
+    }
+
+    public static void Resume()
+    {
+        _isPaused = false;
+        try { _track?.Play(); } catch { }
+    }
+
     private static void MixerLoop()
     {
         while (_running)
         {
+            if (_isPaused)
+            {
+                Thread.Sleep(50);
+                continue;
+            }
             var spu = _spu;
             if (spu != null && _track != null)
             {
