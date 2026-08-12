@@ -51,12 +51,15 @@ public sealed class CpuContext
         set { if (index != 0) _gpr[index] = value; }
     }
 
-    public (uint[] gpr, uint hi, uint lo) Snapshot() => ((uint[])_gpr.Clone(), HI, LO);
+    public (uint[] gpr, uint hi, uint lo, uint sr, uint cause, uint epc) Snapshot() => ((uint[])_gpr.Clone(), HI, LO, SR, Cause, EPC);
 
-    public void Restore((uint[] gpr, uint hi, uint lo) s)
+    public void Restore((uint[] gpr, uint hi, uint lo, uint sr, uint cause, uint epc) s)
     {
         Array.Copy(s.gpr, _gpr, 32);
         HI = s.hi;
         LO = s.lo;
+        SR = s.sr;
+        Cause = s.cause;
+        EPC = s.epc;
     }
 }

@@ -81,8 +81,11 @@ public static class Runtime
         Mem = m;
     }
 
+    public static Action? OnBeforePresentFrame;
+
     public static void PresentFrame()
     {
+        OnBeforePresentFrame?.Invoke();
         HostWindow.Present(Gpu);
         Audio.Attach(Spu);
         FrameClock.Throttle();

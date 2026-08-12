@@ -19,7 +19,7 @@ public sealed class PSMemory : IMemory
     private CdController? _cd;
 
     public ReadOnlySpan<byte> Ram => _ram;
-    internal byte[] RamBuffer => _ram;
+    public byte[] RamBuffer => _ram;
     
     //memory can be frozen for debuging reasons
     private readonly bool[] _frozen = new bool[Runtime.Mode == RunMode.Devkit ? MemoryMap.DevkitRamSize : MemoryMap.RetailRamSize];
