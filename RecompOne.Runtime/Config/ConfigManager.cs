@@ -65,12 +65,17 @@ public static class ConfigManager
         }
     }
 
-    public static void SaveView(IReadOnlyList<IPanel> panels)
+    public static void SaveView(IReadOnlyList<IPanel>? panels = null)
     {
-        foreach (var p in panels)
-            View.Panels[p.Name] = new PanelState { Open = p.IsOpen };
+        if (panels != null)
+        {
+            foreach (var p in panels)
+                View.Panels[p.Name] = new PanelState { Open = p.IsOpen };
+        }
 
-        var imguiIni = ImGui.SaveIniSettingsToMemory();
+        string? imguiIni = null;
+        try { imguiIni = ImGui.SaveIniSettingsToMemory(); } catch { }
+
         var sb = new StringBuilder();
         sb.AppendLine("[RecompOne]");
         foreach (var (key, value) in View.Values)
@@ -78,7 +83,7 @@ public static class ConfigManager
         foreach (var (name, state) in View.Panels)
             sb.AppendLine($"Panels.{name}={state.Open}");
         sb.AppendLine();
-        sb.Append(imguiIni);
+        if (!string.IsNullOrEmpty(imguiIni)) sb.Append(imguiIni);
         File.WriteAllText(InterfaceFile, sb.ToString());
     }
 
