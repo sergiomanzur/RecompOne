@@ -20,6 +20,8 @@ public sealed class PSMemory : IMemory
 
     public ReadOnlySpan<byte> Ram => _ram;
     public byte[] RamBuffer => _ram;
+    public byte[] ScratchpadBuffer => _scratchpad;
+    public byte[] HwRegsBuffer => _hwregs;
     
     //memory can be frozen for debuging reasons
     private readonly bool[] _frozen = new bool[Runtime.Mode == RunMode.Devkit ? MemoryMap.DevkitRamSize : MemoryMap.RetailRamSize];

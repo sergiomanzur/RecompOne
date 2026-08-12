@@ -200,4 +200,93 @@ public sealed partial class Gpu
             default: _gpuRead = 0; break;
         }
     }
+
+    public struct GpuStateSnapshot
+    {
+        public int DrawAreaLeft, DrawAreaTop, DrawAreaRight, DrawAreaBottom;
+        public int DrawOffsetX, DrawOffsetY;
+        public int TexPageX, TexPageY, TexDepth, BlendMode;
+        public bool Dither, TexDisable;
+        public int TexWinMaskX, TexWinMaskY, TexWinOffX, TexWinOffY;
+        public bool SetMask, CheckMask;
+        public int DispVramX, DispVramY;
+        public int HRange1, HRange2, VRange1, VRange2;
+        public int HRes;
+        public bool HRes368, VRes480, Pal, Disp24, Interlace, DisplayDisabled;
+        public int DmaDir;
+    }
+
+    public GpuStateSnapshot SnapshotState() => new GpuStateSnapshot
+    {
+        DrawAreaLeft = _drawAreaLeft,
+        DrawAreaTop = _drawAreaTop,
+        DrawAreaRight = _drawAreaRight,
+        DrawAreaBottom = _drawAreaBottom,
+        DrawOffsetX = _drawOffsetX,
+        DrawOffsetY = _drawOffsetY,
+        TexPageX = _texPageX,
+        TexPageY = _texPageY,
+        TexDepth = _texDepth,
+        BlendMode = _blendMode,
+        Dither = _dither,
+        TexDisable = _texDisable,
+        TexWinMaskX = _texWinMaskX,
+        TexWinMaskY = _texWinMaskY,
+        TexWinOffX = _texWinOffX,
+        TexWinOffY = _texWinOffY,
+        SetMask = _setMask,
+        CheckMask = _checkMask,
+        DispVramX = _dispVramX,
+        DispVramY = _dispVramY,
+        HRange1 = _hRange1,
+        HRange2 = _hRange2,
+        VRange1 = _vRange1,
+        VRange2 = _vRange2,
+        HRes = _hres,
+        HRes368 = _hres368,
+        VRes480 = _vres480,
+        Pal = _pal,
+        Disp24 = _disp24,
+        Interlace = _interlace,
+        DisplayDisabled = _displayDisabled,
+        DmaDir = _dmaDir
+    };
+
+    public void RestoreState(in GpuStateSnapshot s)
+    {
+        _drawAreaLeft = s.DrawAreaLeft;
+        _drawAreaTop = s.DrawAreaTop;
+        _drawAreaRight = s.DrawAreaRight;
+        _drawAreaBottom = s.DrawAreaBottom;
+        _drawOffsetX = s.DrawOffsetX;
+        _drawOffsetY = s.DrawOffsetY;
+        _texPageX = s.TexPageX;
+        _texPageY = s.TexPageY;
+        _texDepth = s.TexDepth;
+        _blendMode = s.BlendMode;
+        _dither = s.Dither;
+        _texDisable = s.TexDisable;
+        _texWinMaskX = s.TexWinMaskX;
+        _texWinMaskY = s.TexWinMaskY;
+        _texWinOffX = s.TexWinOffX;
+        _texWinOffY = s.TexWinOffY;
+        _setMask = s.SetMask;
+        _checkMask = s.CheckMask;
+        _dispVramX = s.DispVramX;
+        _dispVramY = s.DispVramY;
+        _hRange1 = s.HRange1;
+        _hRange2 = s.HRange2;
+        _vRange1 = s.VRange1;
+        _vRange2 = s.VRange2;
+        _hres = s.HRes;
+        _hres368 = s.HRes368;
+        _vres480 = s.VRes480;
+        _pal = s.Pal;
+        _disp24 = s.Disp24;
+        _interlace = s.Interlace;
+        _displayDisabled = s.DisplayDisabled;
+        _dmaDir = s.DmaDir;
+
+        GpuHle.NotifyDisplay(_dispVramX, _dispVramY, DisplayWidth, DisplayHeight);
+    }
 }
