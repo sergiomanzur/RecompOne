@@ -495,8 +495,21 @@ public sealed class GlCore : IGpuBackend
         {
             _gl.Enable(EnableCap.Blend);
 #if ANDROID
-            _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-            _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+            if (_kBlend == 1)
+            {
+                _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.One);
+                _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+            }
+            else if (_kBlend == 2)
+            {
+                _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.One);
+                _gl.BlendEquation(BlendEquationModeEXT.FuncReverseSubtract);
+            }
+            else
+            {
+                _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+                _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+            }
             SetBlend(_kBlend switch { 0 => 0.5f, 3 => 0.25f, _ => 1f }, _kBlend == 0 ? 0.5f : 1f);
             _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
 #else

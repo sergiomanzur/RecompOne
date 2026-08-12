@@ -221,9 +221,9 @@ internal static class GlShaders
             src = src.Replace("#version 330 core", "#version 300 es\nprecision highp float;\nprecision highp int;")
                      .Replace("layout(location = 0, index = 0) out vec4 FragColor;", "out vec4 FragColor;")
                      .Replace("layout(location = 0, index = 1) out vec4 BlendColor;", "")
-                     .Replace("BlendColor = uBlend;", "")
+                     .Replace("BlendColor = uBlend;", "FragColor.a = uBlend.r;")
                      .Replace("BlendColor = uBlendOpaque;", "")
-                     .Replace("BlendColor = texel.a >= 0.5 ? uBlend : uBlendOpaque;", "");
+                     .Replace("BlendColor = texel.a >= 0.5 ? uBlend : uBlendOpaque;", "FragColor.a = texel.a >= 0.5 ? uBlend.r : uSetMask;");
         }
         else if (src.Contains("#version 300 es") && !src.Contains("precision highp float;"))
         {
