@@ -23,5 +23,6 @@ public interface IGpuBackend
 
     // these touch gl
     void Flush();
+    void Reset();
     void Present(in HleDispEnv disp);
 }

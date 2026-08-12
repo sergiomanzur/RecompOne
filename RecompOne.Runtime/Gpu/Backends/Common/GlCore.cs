@@ -542,6 +542,16 @@ public sealed class GlCore : IGpuBackend
 
     void SetBlend(float src, float dst) => _gl.Uniform4(_uBlend, src, src, src, dst);
 
+    public void Reset()
+    {
+        Flush();
+        for (int i = 0; i < _rts.Length; i++)
+        {
+            _rts[i]?.Destroy(_gl);
+            _rts[i] = null;
+        }
+    }
+
     public void Present(in HleDispEnv disp) => PresentDisplay(disp.X, disp.Y, disp.W, disp.H, disp.Rgb24);
 
     public unsafe (uint tex, int w, int h, float aspect, float uMax) PresentDisplay(int dispX, int dispY, int w, int h, bool rgb24 = false, int outW = 0, int outH = 0)
