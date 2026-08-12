@@ -82,6 +82,7 @@ public static class Runtime
     }
 
     public static Action? OnBeforePresentFrame;
+    public static bool PendingStateLoaded { get; set; }
 
     public static void PresentFrame()
     {

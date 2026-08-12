@@ -171,6 +171,30 @@ public sealed class Spu
         for (int i = 0; i < 24; i++) _v[i] = new Voice();
     }
 
+    public void Reset()
+    {
+        lock (_sync)
+        {
+            for (int i = 0; i < 24; i++)
+            {
+                _v[i] = new Voice();
+            }
+            _mainVolL = _mainVolR = 0;
+            _mainCurL = _mainCurR = 0;
+            _reverbVolL = _reverbVolR = 0;
+            _kon = _konHi = 0;
+            _koff = _koffHi = 0;
+            _pmon = _pmonHi = 0;
+            _non = _nonHi = 0;
+            _eon = _eonHi = 0;
+            _endx = 0;
+            _spucnt = 0;
+            _transferAddr = 0;
+            _cdVolL = _cdVolR = 0;
+            _extVolL = _extVolR = 0;
+        }
+    }
+
     public ushort ReadReg16(uint phys)
     {
         lock (_sync) return ReadReg(phys);

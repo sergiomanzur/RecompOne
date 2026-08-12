@@ -174,6 +174,20 @@ public static class Dispatcher
         fn(c, m);
     }
 
+    public static void SetActiveOverlays(IEnumerable<string> overlayNames)
+    {
+        lock (_active)
+        {
+            _active.Clear();
+            _funcMap.Clear();
+        }
+        _pending = null;
+        foreach (var name in overlayNames)
+        {
+            TryLoad(name);
+        }
+    }
+
     static void Rebuild()
     {
         _funcMap.Clear();
