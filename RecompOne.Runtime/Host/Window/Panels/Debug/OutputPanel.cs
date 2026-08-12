@@ -14,7 +14,7 @@ internal sealed class OutputPanel : IPanel
 
     public static uint TextureId => _texId;
 
-    public static void SetTexture(uint id, int w, int h, float aspect = 0f)
+    public static void SetTexture(uint id, int w, int h, float aspect = 0f, float uMax = 1.0f)
         => (_texId, _texW, _texH, _aspect) = (id, w, h, aspect > 0f ? aspect : 4f / 3f);
     
     //idea: in the future make this be able to draw images so you can have ornamented backgrounds

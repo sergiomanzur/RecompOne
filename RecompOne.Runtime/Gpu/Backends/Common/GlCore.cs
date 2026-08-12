@@ -55,7 +55,12 @@ public sealed class GlCore : IGpuBackend
         _progPrim = GlShaders.Build(_gl, GlShaders.PrimVs, GlShaders.PrimFs, "prim");
         _progPresent = GlShaders.Build(_gl, GlShaders.FullscreenVs, GlShaders.PresentFs, "present");
         _progPresent24 = GlShaders.Build(_gl, GlShaders.FullscreenVs, GlShaders.Present24Fs, "present24");
-        if (_progPrim == 0 || _progPresent == 0 || _progPresent24 == 0) return;
+        Console.WriteLine($"[GlBackend] Shaders built: prim={_progPrim}, present={_progPresent}, present24={_progPresent24}");
+        if (_progPrim == 0 || _progPresent == 0 || _progPresent24 == 0)
+        {
+            Console.Error.WriteLine("[GlBackend] InitGl failed due to null shader programs!");
+            return;
+        }
 
         _uTexWindow = _gl.GetUniformLocation(_progPrim, "uTexWindow");
         _uBlend = _gl.GetUniformLocation(_progPrim, "uBlend");
@@ -489,6 +494,12 @@ public sealed class GlCore : IGpuBackend
         else
         {
             _gl.Enable(EnableCap.Blend);
+#if ANDROID
+            _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+            _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+            SetBlend(_kBlend switch { 0 => 0.5f, 3 => 0.25f, _ => 1f }, _kBlend == 0 ? 0.5f : 1f);
+            _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
+#else
             _gl.BlendFuncSeparate(BlendingFactor.Src1Color, BlendingFactor.Src1Alpha, BlendingFactor.One, BlendingFactor.Zero);
             if (_kBlend == 2)
             {
@@ -508,6 +519,7 @@ public sealed class GlCore : IGpuBackend
                 SetBlend(_kBlend switch { 0 => 0.5f, 3 => 0.25f, _ => 1f }, _kBlend == 0 ? 0.5f : 1f);
                 _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
             }
+#endif
         }
 
         _gl.Disable(EnableCap.ScissorTest);
@@ -519,9 +531,9 @@ public sealed class GlCore : IGpuBackend
 
     public void Present(in HleDispEnv disp) => PresentDisplay(disp.X, disp.Y, disp.W, disp.H, disp.Rgb24);
 
-    public unsafe (uint tex, int w, int h, float aspect) PresentDisplay(int dispX, int dispY, int w, int h, bool rgb24 = false, int outW = 0, int outH = 0)
+    public unsafe (uint tex, int w, int h, float aspect, float uMax) PresentDisplay(int dispX, int dispY, int w, int h, bool rgb24 = false, int outW = 0, int outH = 0)
     {
-        if (!Ready || w <= 0 || h <= 0) return (0, 0, 0, GpuHle.OutputAspect);
+        if (!Ready || w <= 0 || h <= 0) return (0, 0, 0, GpuHle.OutputAspect, 1f);
         _frame++;
         Flush();
 
@@ -537,13 +549,17 @@ public sealed class GlCore : IGpuBackend
         }
 
         GlDisplayRt? src = null;
-        if (!rgb24)
-            foreach (var rt in _rts)
-            {
-                if (rt == null || _frame - rt.LastDrawFrame > 4) continue;
-                if (dispX < rt.X || dispY < rt.Y || dispX + w > rt.X + rt.W || dispY + h > rt.Y + rt.H) continue;
-                if (src == null || rt.LastDrawFrame > src.LastDrawFrame) src = rt;
-            }
+        foreach (var rt in _rts)
+        {
+            if (rt == null) continue;
+            if (src == null || rt.LastDrawFrame > src.LastDrawFrame) src = rt;
+        }
+        Console.WriteLine($"[GlBackend] PresentDisplay src={(src != null ? $"Rt({src.X},{src.Y},{src.W},{src.H},Tex={src.Tex})" : "NULL (VRAM)")}, disp={dispX},{dispY},{w},{h}, rgb24={rgb24}");
+
+        // FMV playback (rgb24) writes directly to VRAM in 16-bit packed format.
+        // The Present24Fs shader decodes bytes from VRAM texels, so we must always
+        // read from the raw VRAM texture with no render-target margin padding.
+        if (rgb24) src = null;
 
         int w1x = src != null ? w + src.Margin * 2 : w;
         int h1x = h;
@@ -557,6 +573,7 @@ public sealed class GlCore : IGpuBackend
 
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _presentFbo);
         _gl.Viewport(0, 0, (uint)fbW, (uint)fbH);
+        _gl.ColorMask(true, true, true, true);
         _gl.Disable(EnableCap.DepthTest);
         _gl.Disable(EnableCap.Blend);
         _gl.Disable(EnableCap.ScissorTest);
@@ -564,8 +581,12 @@ public sealed class GlCore : IGpuBackend
 
         _gl.UseProgram(rgb24 ? _progPresent24 : _progPresent);
         _gl.BindVertexArray(_presentVao);
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _presentVbo);
+        _gl.EnableVertexAttribArray(0);
+        _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), (void*)0);
+
         _gl.ActiveTexture(TextureUnit.Texture0);
-        _gl.BindTexture(TextureTarget.Texture2D, src?.Tex ?? _vram.Texture);
+        _gl.BindTexture(TextureTarget.Texture2D, rgb24 ? _vram.Texture : (src?.Tex ?? _vram.Texture));
         if (rgb24)
         {
             _gl.Uniform2(_uPresent24Origin, (float)dispX, dispY);
@@ -573,8 +594,8 @@ public sealed class GlCore : IGpuBackend
         }
         else if (src != null)
         {
-            _gl.Uniform2(_uPresentOrigin, (float)(dispX - src.X), dispY - src.Y);
-            _gl.Uniform2(_uPresentSize, (float)w1x, h1x);
+            _gl.Uniform2(_uPresentOrigin, 0f, 0f);
+            _gl.Uniform2(_uPresentSize, (float)src.Wide1x, src.H);
             _gl.Uniform2(_uPresentTexSize, (float)src.Wide1x, src.H);
         }
         else
@@ -584,11 +605,13 @@ public sealed class GlCore : IGpuBackend
             _gl.Uniform2(_uPresentTexSize, (float)VramShadow.Width, VramShadow.Height);
         }
         _gl.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
+        _gl.DisableVertexAttribArray(0);
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
 
         uint outTex = ApplyPostFx(_presentTex, fbW, fbH);
 
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-        return (outTex, fbW, fbH, aspect);
+        return (outTex, fbW, fbH, aspect, 1f);
     }
     
     //support for post-fx shaders to be loaded, so you can have cool shaders (this was too anonying to implement)
@@ -686,12 +709,27 @@ public sealed class GlCore : IGpuBackend
 
     unsafe void EnsurePresentSize(int w, int h, bool nearest)
     {
+        if (_presentTex == 0)
+        {
+            _presentTex = _gl.GenTexture();
+            _gl.BindTexture(TextureTarget.Texture2D, _presentTex);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+            _presentFbo = _gl.GenFramebuffer();
+        }
+
         if (w == _presentW && h == _presentH && nearest == _presentNearest) return;
+
         _gl.BindTexture(TextureTarget.Texture2D, _presentTex);
         _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba8, (uint)w, (uint)h, 0, PixelFormat.Rgba, PixelType.UnsignedByte, null);
         var filter = nearest ? GLEnum.Nearest : GLEnum.Linear;
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)filter);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)filter);
+
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _presentFbo);
+        _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, _presentTex, 0);
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
         _presentW = w; _presentH = h; _presentNearest = nearest;
     }
 

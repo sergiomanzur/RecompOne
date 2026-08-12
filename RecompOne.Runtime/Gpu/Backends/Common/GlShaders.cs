@@ -216,19 +216,18 @@ internal static class GlShaders
     {
         log = null;
 #if ANDROID
-        string originalSrc = src;
         if (src.Contains("#version 330 core"))
         {
-            src = src.Replace("#version 330 core", "#version 300 es\nprecision highp float;\nprecision highp int;");
+            src = src.Replace("#version 330 core", "#version 300 es\nprecision highp float;\nprecision highp int;")
+                     .Replace("layout(location = 0, index = 0) out vec4 FragColor;", "out vec4 FragColor;")
+                     .Replace("layout(location = 0, index = 1) out vec4 BlendColor;", "")
+                     .Replace("BlendColor = uBlend;", "")
+                     .Replace("BlendColor = uBlendOpaque;", "")
+                     .Replace("BlendColor = texel.a >= 0.5 ? uBlend : uBlendOpaque;", "");
         }
         else if (src.Contains("#version 300 es") && !src.Contains("precision highp float;"))
         {
             src = src.Replace("#version 300 es", "#version 300 es\nprecision highp float;\nprecision highp int;");
-        }
-
-        if (type == ShaderType.FragmentShader && src.Contains("index = 1"))
-        {
-            src = src.Replace("#version 300 es", "#version 300 es\n#extension GL_EXT_blend_func_extended : require");
         }
 #endif
         uint sh = gl.CreateShader(type);
@@ -237,28 +236,6 @@ internal static class GlShaders
         gl.GetShader(sh, ShaderParameterName.CompileStatus, out int ok);
         if (ok == 0)
         {
-#if ANDROID
-            if (type == ShaderType.FragmentShader && (src.Contains("GL_EXT_blend_func_extended") || src.Contains("index = 1")))
-            {
-                gl.DeleteShader(sh);
-                sh = gl.CreateShader(type);
-                string fallbackSrc = originalSrc
-                    .Replace("#version 330 core", "#version 300 es\nprecision highp float;\nprecision highp int;")
-                    .Replace("layout(location = 0, index = 0)", "layout(location = 0)")
-                    .Replace("layout(location = 0, index = 1) out vec4 BlendColor;", "")
-                    .Replace("BlendColor = uBlend;", "")
-                    .Replace("BlendColor = uBlendOpaque;", "")
-                    .Replace("BlendColor = texel.a >= 0.5 ? uBlend : uBlendOpaque;", "");
-                if (fallbackSrc.Contains("#version 300 es") && !fallbackSrc.Contains("precision highp float;"))
-                {
-                    fallbackSrc = fallbackSrc.Replace("#version 300 es", "#version 300 es\nprecision highp float;\nprecision highp int;");
-                }
-                gl.ShaderSource(sh, Ascii(fallbackSrc));
-                gl.CompileShader(sh);
-                gl.GetShader(sh, ShaderParameterName.CompileStatus, out ok);
-                if (ok != 0) return sh;
-            }
-#endif
             log = $"{type}: {gl.GetShaderInfoLog(sh)}";
             Console.WriteLine($"[GlBackend] compile failed ({name} {type}) {log}");
             gl.DeleteShader(sh);

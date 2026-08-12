@@ -424,7 +424,7 @@ public static class HostWindow
     }
 
     public static AspectRatioMode CurrentAspectRatio = AspectRatioMode.AutoDevice;
-    public static volatile bool PendingGpuBackendReset;
+    public static volatile bool PendingGpuBackendReset = true;
 
     public static void RequestGpuReset()
     {
@@ -434,12 +434,15 @@ public static class HostWindow
     static uint _directVao, _directVbo, _directProg;
     static int _uDirectTex;
 
-    static unsafe void RenderDirectDisplay(GL gl, int screenW, int screenH)
+    static float _directUMax = 1.0f;
+    static unsafe void RenderDirectDisplay(GL gl, int screenW, int screenH, uint overrideTex = 0, float uMax = 1.0f)
     {
-        uint tex = OutputPanel.TextureId;
+        uint tex = overrideTex != 0 ? overrideTex : OutputPanel.TextureId;
         if (tex == 0) tex = _displayTex;
         if (tex == 0) tex = _vramTex;
         if (tex == 0) return;
+
+        float um = uMax > 0f ? uMax : _directUMax;
 
         if (_directProg == 0)
         {
@@ -471,8 +474,8 @@ public static class HostWindow
             {
                 _uDirectTex = gl.GetUniformLocation(_directProg, "uTex");
                 _directVao = gl.GenVertexArray();
-                _directVbo = gl.GenBuffer();
                 gl.BindVertexArray(_directVao);
+                _directVbo = gl.GenBuffer();
                 gl.BindBuffer(BufferTargetARB.ArrayBuffer, _directVbo);
                 float[] quad = {
                     -1f, -1f, 0f, 1f,
@@ -491,7 +494,7 @@ public static class HostWindow
             }
         }
 
-        if (_directProg == 0) return;
+        if (_directProg == 0 || _directVbo == 0) return;
 
         int vx, vy, vw, vh;
         if (screenW < screenH)
@@ -557,10 +560,12 @@ public static class HostWindow
 
         gl.UseProgram(_directProg);
         gl.BindVertexArray(_directVao);
+
         gl.ActiveTexture(TextureUnit.Texture0);
         gl.BindTexture(TextureTarget.Texture2D, tex);
         gl.Uniform1(_uDirectTex, 0);
         gl.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
+
         gl.BindVertexArray(0);
     }
 
@@ -604,24 +609,39 @@ public static class HostWindow
             PanelManager.Get<MemoryEditorPanel>()?.IsOpen == true;
 
         var gpu = _gpu;
+        var glBackend = Hle.GpuHle.Backend as Hle.GlCore;
+        uint directTex = 0;
         if (gpu != null)
         {
-
-            if (Hle.GpuHle.Active && _glBackend is { Ready: true } && gpu.DisplayEnabled)
+            if (Hle.GpuHle.Active && glBackend is { Ready: true })
             {
                 var wf = _window!.FramebufferSize;
-                var (tex, tw, th, aspect) = _glBackend.PresentDisplay(
+                int dispW = gpu.DisplayWidth > 0 ? gpu.DisplayWidth : 320;
+                int dispH = gpu.DisplayHeight > 0 ? gpu.DisplayHeight : 240;
+                var (tex, tw, th, aspect, uMax) = glBackend.PresentDisplay(
                     gpu.DisplayX, gpu.DisplayY,
-                    gpu.DisplayWidth, gpu.DisplayHeight,
+                    dispW, dispH,
                     gpu.Display24Bit,
                     outW: wf.X, outH: wf.Y);
-                if (tex != 0) OutputPanel.SetTexture(tex, tw, th, aspect);
+                if (tex != 0)
+                {
+                    OutputPanel.SetTexture(tex, tw, th, aspect, uMax);
+                    directTex = tex;
+                    _directUMax = uMax;
+                }
+                else
+                {
+                    UploadDisplayTexture(gl, gpu);
+                    directTex = OutputPanel.TextureId;
+                    _directUMax = 1.0f;
+                }
                 gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
                 gl.Viewport(0, 0, (uint)wf.X, (uint)wf.Y);
             }
             else
             {
                 UploadDisplayTexture(gl, gpu);
+                directTex = OutputPanel.TextureId;
             }
 
             if (PanelManager.Get<VramViewerPanel>()?.IsOpen == true)
@@ -634,6 +654,9 @@ public static class HostWindow
             if (_ramReady) FlushRamTexture(gl);
         }
 
+#if ANDROID
+        RenderDirectDisplay(gl, fbDef.X, fbDef.Y, directTex, _directUMax);
+#else
         if (_imgui != null)
         {
             if (!ConfigManager.View.HideTopBar)
@@ -645,17 +668,15 @@ public static class HostWindow
             Modding.ModLoadingPopup.Draw();
             NoticePopup.Draw();
             if (StartupNotice.NeedsAck) StartupNotice.Draw();
-#if ANDROID
-            TouchControls.Draw();
-#endif
             gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             gl.Viewport(0, 0, (uint)fbDef.X, (uint)fbDef.Y);
             try { _imgui.Render(); } catch { _imgui = null; }
         }
         else
         {
-            RenderDirectDisplay(gl, fbDef.X, fbDef.Y);
+            RenderDirectDisplay(gl, fbDef.X, fbDef.Y, directTex);
         }
+#endif
     }
 
     static void DrawDockspace()
