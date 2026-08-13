@@ -112,7 +112,7 @@ public static class HostWindow
                 WindowState = ConfigManager.View.Fullscreen ? WindowState.Fullscreen : WindowState.Normal,
                 API = MaxSupportedApi(),
             };
-            _window = Window.Create(options);
+            _window = Silk.NET.Windowing.Window.Create(options);
 #endif
             _window.Load += OnLoad;
             _window.Render += OnRender;
