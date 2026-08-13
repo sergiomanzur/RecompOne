@@ -19,12 +19,6 @@ public static class LibEtc
         Runtime.PresentFrame();
         _vcount++;
 
-        if (Runtime.PendingStateLoaded)
-        {
-            Runtime.PendingStateLoaded = false;
-            throw new StateLoadedException();
-        }
-
         if (Event.HasAnyListeners<VSyncEvent>())
         {
             var e = _vsyncEvent;

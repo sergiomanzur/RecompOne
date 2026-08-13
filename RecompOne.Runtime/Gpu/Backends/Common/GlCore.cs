@@ -577,8 +577,6 @@ public sealed class GlCore : IGpuBackend
             if (rt == null) continue;
             if (src == null || rt.LastDrawFrame > src.LastDrawFrame) src = rt;
         }
-        Console.WriteLine($"[GlBackend] PresentDisplay src={(src != null ? $"Rt({src.X},{src.Y},{src.W},{src.H},Tex={src.Tex})" : "NULL (VRAM)")}, disp={dispX},{dispY},{w},{h}, rgb24={rgb24}");
-
         // FMV playback (rgb24) writes directly to VRAM in 16-bit packed format.
         // The Present24Fs shader decodes bytes from VRAM texels, so we must always
         // read from the raw VRAM texture with no render-target margin padding.

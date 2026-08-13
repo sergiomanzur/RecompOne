@@ -94,8 +94,11 @@ public static class Runtime
         Mem = m;
     }
 
+    /// <summary>
+    /// Fires at the VSync frame boundary, before the frame is presented. Hosts use this
+    /// to apply savestate save/load on the emulation thread at a well-defined point.
+    /// </summary>
     public static Action? OnBeforePresentFrame;
-    public static bool PendingStateLoaded { get; set; }
 
     static volatile bool _hardResetPending;
 
