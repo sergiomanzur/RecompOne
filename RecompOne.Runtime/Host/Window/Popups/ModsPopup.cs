@@ -1,16 +1,12 @@
 using System.Diagnostics;
 using System.Numerics;
 using ImGuiNET;
-using RecompOne.Runtime.Host;
-using RecompOne.Runtime.Host.Window;
+using RecompOne.Runtime.Modding;
 
-namespace RecompOne.Runtime.Modding;
+namespace RecompOne.Runtime.Host.Window;
 
-internal sealed class ModsPopup : IPanel
+public sealed class ModsPopup : Popup
 {
-    public string Name => "Mods";
-    public bool IsOpen { get; set; }
-
     const float IconSize = 56f;
     const float ToggleW = 38f;
     const float ToggleH = 21f;
@@ -20,33 +16,28 @@ internal sealed class ModsPopup : IPanel
     static readonly Dictionary<string, uint> _icons = new();
     static readonly HashSet<string> _iconTried = new();
     static readonly Dictionary<uint, float> _anim = new();
+
     string? _settingsFor;
 
-    public void Draw()
+    protected override string TitleKey => "mods.title";
+    protected override Vector2 Size => new(580f, 540f);
+
+    protected override void DrawContent()
     {
-        var vp = ImGui.GetMainViewport();
-        ImGui.SetNextWindowSize(new Vector2(560, 520), ImGuiCond.FirstUseEver);
-        ImGui.SetNextWindowPos(vp.GetCenter(), ImGuiCond.FirstUseEver, new Vector2(0.5f, 0.5f));
-
-        bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open,
-                ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking | ImGuiWindowFlags.NoSavedSettings))
-        {
-            IsOpen = open;
-            ImGui.End();
-            return;
-        }
-
         var mods = ModLoader.Mods;
         int active = 0;
-        foreach (var m in mods) if (m.Loaded) active++;
+        foreach (var mod in mods) if (mod.Loaded) active++;
 
-        ImGui.TextDisabled(mods.Count == 1 ? "1 mod" : $"{mods.Count} mods");
-        if (active > 0) { ImGui.SameLine(); ImGui.TextDisabled($"-  {active} active"); }
+        ImGui.TextDisabled(mods.Count == 1 ? Localization.T("mods.count_one") : Localization.T("mods.count", mods.Count));
+        if (active > 0)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled($"-  {Localization.T("mods.active", active)}");
+        }
 
-        const string folder = "Open Folder";
-        float fw = ImGui.CalcTextSize(folder).X + ImGui.GetStyle().FramePadding.X * 2f;
-        ImGui.SameLine(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - fw);
+        var folder = Icons.Or(Icons.FolderOpen, "...");
+        float folderWidth = ImGui.CalcTextSize(folder).X + ImGui.GetStyle().FramePadding.X * 2f;
+        ImGui.SameLine(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - folderWidth);
         if (ImGui.SmallButton(folder)) OpenFolder();
 
         ImGui.Separator();
@@ -55,22 +46,18 @@ internal sealed class ModsPopup : IPanel
         if (mods.Count == 0)
         {
             ImGui.Spacing();
-            CenteredDisabled("No mods found.");
-            CenteredDisabled("Drop a mod folder or zip into the mods folder and restart.");
-        }
-        else
-        {
-            foreach (var mod in mods) DrawMod(mod);
+            CenteredDisabled(Localization.T("mods.empty"));
+            CenteredDisabled(Localization.T("mods.empty_hint"));
+            return;
         }
 
-        IsOpen = open;
-        ImGui.End();
+        foreach (var mod in mods) DrawMod(mod);
     }
 
     void DrawMod(ModEntry mod)
     {
         ImGui.PushID(mod.Info.Id);
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, ImGui.GetStyle().FrameRounding);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12f, 12f));
         ImGui.BeginChild("card", new Vector2(0, 0), ImGuiChildFlags.Border | ImGuiChildFlags.AutoResizeY);
 
@@ -128,7 +115,7 @@ internal sealed class ModsPopup : IPanel
             ModLoader.SetEnabled(mod.Info.Id, enabled);
             if (!enabled && _settingsFor == mod.Info.Id) _settingsFor = null;
         }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(enabled ? "Disable" : "Enable");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T(enabled ? "mods.disable" : "mods.enable"));
 
         if (showGear)
         {
@@ -137,7 +124,7 @@ internal sealed class ModsPopup : IPanel
             bool selected = _settingsFor == mod.Info.Id;
             if (GearButton("##gear", selected))
                 _settingsFor = selected ? null : mod.Info.Id;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Settings");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("mods.settings"));
         }
 
         x -= Gap + SmallBtn;
@@ -148,11 +135,11 @@ internal sealed class ModsPopup : IPanel
         if (ImGui.BeginPopup("opts"))
         {
             if (!mod.Enabled) ImGui.BeginDisabled();
-            if (ImGui.MenuItem("Reload")) ModLoader.Reload(mod.Info.Id);
+            if (ImGui.MenuItem(Localization.T("mods.reload"))) ModLoader.Reload(mod.Info.Id);
             if (!mod.Enabled) ImGui.EndDisabled();
             ImGui.Separator();
             ImGui.TextDisabled(mod.Info.Id);
-            ImGui.TextDisabled($"{mod.HookCount} hook(s)");
+            ImGui.TextDisabled(Localization.T("mods.hooks", mod.HookCount));
             ImGui.EndPopup();
         }
 
@@ -186,7 +173,7 @@ internal sealed class ModsPopup : IPanel
         ImGui.GetWindowDrawList().AddRectFilled(new Vector2(pos.X + 1f, cy - 3f), new Vector2(pos.X + 7f, cy + 3f), ImGui.ColorConvertFloat4ToU32(col));
         ImGui.Dummy(new Vector2(8f, h));
         if (mod.Enabled && !mod.Loaded && ImGui.IsItemHovered())
-            ImGui.SetTooltip(mod.LoadError ?? "failed to load, check the console");
+            ImGui.SetTooltip(mod.LoadError ?? Localization.T("mods.load_failed"));
     }
 
     void DrawIcon(ModEntry mod, float size) //draw generic icon when no icon is proveded, its like the youtube one, first initial and colorful background based on modid hash

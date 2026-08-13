@@ -20,6 +20,15 @@ public static class BiosB
 
     static uint _padBuf;
 
+    public static void Reset()
+    {
+        Array.Clear(_evCBs);
+        Array.Clear(_tcbs);
+        Array.Clear(_intChain);
+        IntrEnvInInterruptAddr = 0u;
+        _padBuf = 0u;
+    }
+
     public static void DeliverEvent(uint @class, uint spec)
     {
         for (int i = 0; i < MaxEvents; i++)

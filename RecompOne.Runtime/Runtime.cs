@@ -7,6 +7,8 @@ namespace RecompOne.Runtime;
 
 public enum RunMode { Retail, Devkit }
 
+public sealed class HardResetSignal : Exception;
+
 public static class Runtime
 {
     public static CpuContext? Cpu { get; private set; }
@@ -43,12 +45,19 @@ public static class Runtime
     public static readonly Memory.RamLogger RamLog = new();
     public static readonly Dispatch.OverlayEventLog OverlayLog = new();
 
+    static bool _hostReady;
+
     public static void Initialize(string title)
     {
-        Diagnostics.ConsoleMirror.Install();
-        HostWindow.Initialize(title);
+        if (!_hostReady)
+        {
+            _hostReady = true;
+            Diagnostics.ConsoleMirror.Install();
+            HostWindow.Initialize(title);
+            Audio.Initialize();
+        }
+
         LoadMemoryCards();
-        Audio.Initialize();
         Audio.SetMasterVolume(Config.ConfigManager.Game.Muted ? 0f : Config.ConfigManager.Game.MasterVolume);
         if (Event.HasAnyListeners<RuntimeReadyEvent>())
         {
@@ -73,7 +82,11 @@ public static class Runtime
     public static void ClearIcon() => HostWindow.ClearIcon();
     
     public static void ShowNotice(string message) => Host.Window.NoticePopup.Show(message);
-    public static void SetStartupNotice(string message, string title = "Notice", string ackKey = "StartupNoticeAck") => Host.Window.StartupNotice.Set(message, title, ackKey);
+    public static void SetStartupNotice(string message, string title = "common.notice", string ackKey = "StartupNoticeAck") => Host.Window.StartupNoticePopup.Set(message, title, ackKey);
+
+    public static void AddLanguages(string json) => Host.Window.Localization.Merge(json);
+    public static bool AddLanguages(System.Reflection.Assembly assembly, string resourceName)
+        => Host.Window.Localization.MergeEmbedded(assembly, resourceName);
 
     public static void SetContext(CpuContext c, IMemory m)
     {
@@ -84,8 +97,61 @@ public static class Runtime
     public static Action? OnBeforePresentFrame;
     public static bool PendingStateLoaded { get; set; }
 
+    static volatile bool _hardResetPending;
+
+    public static bool HardResetPending => _hardResetPending;
+
+    public static void HardReset() => _hardResetPending = true;
+
+    public static void Run(Action boot)
+    {
+        while (true)
+        {
+            try
+            {
+                boot();
+                return;
+            }
+            catch (HardResetSignal)
+            {
+                Console.WriteLine("[Runtime] hard reset,game booting again");
+                ResetForBoot();
+            }
+        }
+    }
+
+    static void ResetForBoot()
+    {
+        Audio.Detach();
+
+        Sdk.LibCd.Reset();
+        Sdk.LibCdStream.Reset();
+        Sdk.LibPad.Reset();
+        Dispatch.Dispatcher.Reset();
+        Bios.BiosB.Reset();
+        OverlayLog.Clear();
+
+        Cpu = null;
+        Mem = null;
+        Gpu = null;
+        Spu = null;
+        Cd = null;
+
+        if (Hle.GpuHle.Backend is { Ready: true } backend)
+        {
+            backend.FillRect(0, 0, global::RecompOne.Runtime.Gpu.VramWidth, global::RecompOne.Runtime.Gpu.VramHeight, 0);
+            backend.Flush();
+        }
+    }
+
     public static void PresentFrame()
     {
+        if (_hardResetPending)
+        {
+            _hardResetPending = false;
+            throw new HardResetSignal();
+        }
+
         OnBeforePresentFrame?.Invoke();
         HostWindow.Present(Gpu);
         Audio.Attach(Spu);

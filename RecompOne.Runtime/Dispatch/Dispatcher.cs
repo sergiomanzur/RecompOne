@@ -49,6 +49,13 @@ public static class Dispatcher
     }
     public static void ClearPending() => _pending = null;
 
+    public static void Reset()
+    {
+        _pending = null;
+        lock (_active) _active.Clear();
+        _funcMap.Clear();
+    }
+
     public static void Load(string name)
     {
         if (!_registry.TryGetValue(name, out var overlay))

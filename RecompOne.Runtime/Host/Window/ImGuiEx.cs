@@ -19,4 +19,13 @@ internal static class ImGuiEx
         ImGui.TextUnformatted(s);
         ImGui.PopStyleColor();
     }
+
+    public static void TextWrappedColored(Vector4 col, string s)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, col);
+        ImGui.TextWrapped(s);
+        ImGui.PopStyleColor();
+    }
+
+    public static string Title(string titleKey, string id) => $"{Localization.T(titleKey)}###{id}";
 }

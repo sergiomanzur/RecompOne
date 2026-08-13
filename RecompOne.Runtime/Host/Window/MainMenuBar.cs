@@ -1,139 +1,92 @@
-using ImGuiNET;
 using RecompOne.Runtime.Config;
 
 namespace RecompOne.Runtime.Host.Window;
 
-internal static class MainMenuBar
+public static class MainMenuBar
 {
+    public const int SystemSettings = 10;
+    public const int SystemViewSeparator = 20;
+    public const int SystemShowMenuBar = 30;
+    public const int SystemAutoHide = 40;
+    public const int SystemFullscreen = 50;
+    public const int SystemResetSeparator = 60;
+    public const int SystemSoftReset = 70;
+    public const int SystemHardReset = 80;
+    public const int SystemQuitSeparator = 90;
+    public const int SystemQuit = 100;
+
     static bool _registered;
 
     public static void RegisterBuiltins()
     {
         if (_registered) return;
         _registered = true;
-        MenuRegistry.Register("System", ConfigMenu, null, MenuRegistry.OrderSystem);
-        MenuRegistry.Register("Mods", ModsMenu, null, MenuRegistry.OrderMods);
-        MenuRegistry.Register("Debug", DebugMenu, null, MenuRegistry.OrderDebug);
+
+        MenuRegistry.Menu("menu.system", MenuRegistry.OrderSystem)
+            .Popup<SettingsPopup>("menu.system.settings").Order(SystemSettings)
+            .Separator().Order(SystemViewSeparator)
+            .Check("menu.system.show_menu_bar", () => !ConfigManager.View.HideTopBar, ShowMenuBar, "F1").Order(SystemShowMenuBar)
+            .Check("menu.system.autohide_menu_bar", () => ConfigManager.View.AutoHideMenuBar, AutoHideMenuBar).Order(SystemAutoHide).Disabled()
+            .Check("menu.system.fullscreen", () => ConfigManager.View.Fullscreen, Fullscreen, "F11").Order(SystemFullscreen)
+            .Separator().Order(SystemResetSeparator)
+            .Item("menu.system.hard_reset", Runtime.HardReset).Order(SystemHardReset)
+            .Separator().Order(SystemQuitSeparator)
+            .Item("menu.system.quit", static () => Environment.Exit(0)).Order(SystemQuit);
+
+        MenuRegistry.Menu("menu.mods", MenuRegistry.OrderMods)
+            .Popup<ModsPopup>("menu.mods.manage")
+            .Item("menu.mods.hub", static () => { }).Disabled();
+
+        MenuRegistry.Menu("menu.debug", MenuRegistry.OrderDebug)
+            .Submenu("menu.debug.gpu")
+                .Panel<OutputPanel>("panel.output")
+                .Panel<VramViewerPanel>("panel.vram_viewer")
+                .End()
+            .Submenu("menu.debug.cpu")
+                .Panel<CpuStatePanel>("panel.cpu_state")
+                .End()
+            .Submenu("menu.debug.memory")
+                .Panel<RamMapPanel>("panel.ram_map")
+                .Panel<MemoryEditorPanel>("panel.memory_editor")
+                .End()
+            .Submenu("menu.debug.audio")
+                .Panel<SpuViewerPanel>("panel.spu_viewer")
+                .End()
+            .Submenu("menu.debug.cd")
+                .Panel<CdDebugPanel>("panel.cd_debug")
+                .End()
+            .Submenu("menu.debug.system")
+                .Panel<OverlayEventsPanel>("panel.overlay_events")
+                .Panel<ConsolePanel>("panel.console")
+                .End()
+            .Separator()
+            .Item("menu.debug.reset_view", ResetView);
     }
 
-    public static void Draw()
+    public static void Draw() => MenuRegistry.Draw();
+
+    static void ResetView()
     {
-        if (!ImGui.BeginMainMenuBar()) return;
-        MenuRegistry.DrawMenus();
-        ImGui.EndMainMenuBar();
+        ConfigManager.ResetView(PanelManager.Panels);
+        HostWindow.RequestLayout();
     }
 
-    static void ConfigMenu()
+    static void ShowMenuBar(bool show)
     {
-        if (ImGui.MenuItem("Settings"))
-            if (PanelManager.Get<SettingsPopup>() is { } popup) popup.IsOpen = true;
-
-        ImGui.Separator();
-
-        bool showBar = !ConfigManager.View.HideTopBar;
-        if (ImGui.MenuItem("Show Menu Bar", "F1", showBar))
-        {
-            ConfigManager.View.HideTopBar = showBar;
-            ConfigManager.SaveView(PanelManager.Panels);
-        }
-
-        ImGui.BeginDisabled();
-        bool autoHideMenuBar = ConfigManager.View.AutoHideMenuBar;
-        if (ImGui.MenuItem("Autohide Menu Bar", null, autoHideMenuBar))
-        {
-            ConfigManager.View.HideTopBar = showBar;
-        }
-        ImGui.EndDisabled();
-
-        bool fs = ConfigManager.View.Fullscreen;
-        if (ImGui.MenuItem("Fullscreen", "F11", fs))
-        {
-            ConfigManager.View.Fullscreen = !fs;
-            HostWindow.SetFullscreen(!fs);
-            ConfigManager.SaveView(PanelManager.Panels);
-        }
-
-        ImGui.Separator();
-
-        ImGui.BeginDisabled();
-        if(ImGui.MenuItem("Soft Reset"))
-        {
-            
-        }
-
-        if(ImGui.MenuItem("Hard Reset"))
-        {
-            
-        }
-        ImGui.EndDisabled();
-
-        ImGui.Separator();
-
-        if (ImGui.MenuItem("Quit"))
-        {
-            Environment.Exit(0);
-        }
+        ConfigManager.View.HideTopBar = !show;
+        ConfigManager.SaveView(PanelManager.Panels);
     }
 
-    static void ModsMenu()
+    static void AutoHideMenuBar(bool autoHide)
     {
-        if (ImGui.MenuItem("View Mod Panel"))
-            if (PanelManager.Get<Modding.ModsPopup>() is { } popup) popup.IsOpen = true;
-
-        ImGui.BeginDisabled();
-        if (ImGui.MenuItem("Explore Mod Hub"))
-        {
-            
-        }
-        ImGui.EndDisabled();
+        ConfigManager.View.AutoHideMenuBar = autoHide;
+        ConfigManager.SaveView(PanelManager.Panels);
     }
 
-    static void DebugMenu()
+    static void Fullscreen(bool fullscreen)
     {
-        if (ImGui.BeginMenu("GPU"))
-        {
-            Toggle<OutputPanel>("Output");
-            Toggle<VramViewerPanel>("VRAM Viewer");
-            ImGui.EndMenu();
-        }
-        if (ImGui.BeginMenu("CPU"))
-        {
-            Toggle<CpuStatePanel>("CPU State");
-            ImGui.EndMenu();
-        }
-        if (ImGui.BeginMenu("Memory"))
-        {
-            Toggle<RamMapPanel>("RAM Map");
-            Toggle<MemoryEditorPanel>("Memory Editor");
-            ImGui.EndMenu();
-        }
-        if (ImGui.BeginMenu("Audio"))
-        {
-            Toggle<SpuViewerPanel>("SPU Viewer");
-            ImGui.EndMenu();
-        }
-        if (ImGui.BeginMenu("CD"))
-        {
-            Toggle<CdDebugPanel>("CD Debug");
-            ImGui.EndMenu();
-        }
-        if (ImGui.BeginMenu("System"))
-        {
-            Toggle<OverlayEventsPanel>("Overlay Events");
-            Toggle<ConsolePanel>("Console");
-            ImGui.EndMenu();
-        }
-
-        ImGui.Separator();
-
-        if (ImGui.MenuItem("Reset View")) ConfigManager.ResetView(PanelManager.Panels);
-    }
-
-    static void Toggle<T>(string label) where T : class, IPanel
-    {
-        var panel = PanelManager.Get<T>();
-        if (panel == null) return;
-        bool open = panel.IsOpen;
-        if (ImGui.MenuItem(label, null, open)) panel.IsOpen = !open;
+        ConfigManager.View.Fullscreen = fullscreen;
+        HostWindow.SetFullscreen(fullscreen);
+        ConfigManager.SaveView(PanelManager.Panels);
     }
 }

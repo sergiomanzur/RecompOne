@@ -7,6 +7,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class CpuStatePanel : IPanel
 {
     public string Name => "CPU State";
+    public string TitleKey => "panel.cpu_state";
     public bool IsOpen { get; set; }
 
     static readonly string[] GprNames =
@@ -23,7 +24,7 @@ internal sealed class CpuStatePanel : IPanel
     {
         ImGui.SetNextWindowSize(new Vector2(320, 540), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open))
+        if (!ImGui.Begin(this.Title(), ref open))
         {
             IsOpen = open; ImGui.End(); 
             return;

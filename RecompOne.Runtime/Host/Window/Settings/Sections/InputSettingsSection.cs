@@ -8,7 +8,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class InputSettingsSection : ISettingsSection
 {
     public string Id => "input";
-    public string Title => "Input";
+    public string TitleKey => "settings.input";
     public int Order => 0;
 
     static readonly (string Label, Func<KeyBindings, string> GetKey, Action<KeyBindings, string> SetKey, Func<GamepadBindings, int[]> GetPad, Action<GamepadBindings, int[]> SetPad)[] _rows =
@@ -45,16 +45,14 @@ internal sealed class InputSettingsSection : ISettingsSection
 
         if (_gamepadMode && !InputManager.IsPadConnected(_padIndex))
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0.3f, 1f));
-            ImGui.TextUnformatted("No gamepad connected.");
-            ImGui.PopStyleColor();
+            ImGuiEx.TextColored(new Vector4(1f, 0.75f, 0.3f, 1f), Localization.T("settings.input.no_gamepad"));
             ImGui.Spacing();
         }
 
         DrawBindings();
 
         ImGui.Spacing();
-        if (ImGui.Button("Reset to Defaults"))
+        if (ImGui.Button(Localization.T("settings.input.reset_defaults")))
         {
             if (!_gamepadMode)
             {
@@ -75,13 +73,13 @@ internal sealed class InputSettingsSection : ISettingsSection
     {
         if (ImGui.BeginTabBar("##input-device"))
         {
-            if (ImGui.BeginTabItem("Keyboard"))
+            if (ImGui.BeginTabItem(Localization.T("settings.input.keyboard")))
             {
                 if (_gamepadMode) _remapRow = -1;
                 _gamepadMode = false;
                 ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Gamepad"))
+            if (ImGui.BeginTabItem(Localization.T("settings.input.gamepad")))
             {
                 if (!_gamepadMode) _remapRow = -1;
                 _gamepadMode = true;
@@ -95,13 +93,13 @@ internal sealed class InputSettingsSection : ISettingsSection
     {
         if (ImGui.BeginTabBar("##input-pad"))
         {
-            if (ImGui.BeginTabItem("Pad 1"))
+            if (ImGui.BeginTabItem(Localization.T("settings.input.pad", 1)))
             {
                 if (_padIndex != 0) _remapRow = -1;
                 _padIndex = 0;
                 ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Pad 2"))
+            if (ImGui.BeginTabItem(Localization.T("settings.input.pad", 2)))
             {
                 if (_padIndex != 1) _remapRow = -1;
                 _padIndex = 1;
@@ -117,8 +115,9 @@ internal sealed class InputSettingsSection : ISettingsSection
                 ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
             return;
 
-        ImGui.TableSetupColumn("Button", ImGuiTableColumnFlags.WidthFixed, 90);
-        ImGui.TableSetupColumn(_gamepadMode ? "Gamepad" : "Keyboard", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn(Localization.T("settings.input.button"), ImGuiTableColumnFlags.WidthFixed, 90);
+        ImGui.TableSetupColumn(Localization.T(_gamepadMode ? "settings.input.gamepad" : "settings.input.keyboard"),
+            ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
 
         var keys = _padIndex == 0 ? ConfigManager.Game.Keys : ConfigManager.Game.Keys2;
@@ -139,8 +138,8 @@ internal sealed class InputSettingsSection : ISettingsSection
             {
                 var bindings = getPad(pad);
                 string text = awaiting
-                    ? _remapAdd ? "[press button to add...]" : "[press button...]"
-                    : bindings.Length == 0 ? "unbound" : string.Join(" | ", bindings.Select(PadLabel));
+                    ? Localization.T(_remapAdd ? "settings.input.press_button_add" : "settings.input.press_button")
+                    : bindings.Length == 0 ? Localization.T("settings.input.unbound") : string.Join(" | ", bindings.Select(PadLabel));
 
                 float plusW = ImGui.GetFrameHeight();
                 float spacing = ImGui.GetStyle().ItemSpacing.X;
@@ -174,7 +173,9 @@ internal sealed class InputSettingsSection : ISettingsSection
             else
             {
                 var key = getKey(keys);
-                var text = awaiting ? "[press key...]" : $"{(key.Length == 0 ? "unbound" : key)}##k{i}";
+                var text = awaiting
+                    ? Localization.T("settings.input.press_key")
+                    : $"{(key.Length == 0 ? Localization.T("settings.input.unbound") : key)}##k{i}";
                 if (ImGui.Button(text, new Vector2(-1, 0))) _remapRow = i;
                 if (awaiting)
                 {

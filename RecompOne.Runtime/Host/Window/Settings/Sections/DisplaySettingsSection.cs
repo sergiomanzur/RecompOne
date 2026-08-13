@@ -6,13 +6,15 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class DisplaySettingsSection : ISettingsSection
 {
     public string Id => "display";
-    public string Title => "Display";
+    public string TitleKey => "settings.display";
     public int Order => 5;
+
+    static readonly string[] Backends = ["auto", "gl45", "gl33"];
 
     public void Draw()
     {
         bool fullscreen = ConfigManager.View.Fullscreen;
-        if (ImGui.Checkbox("Fullscreen", ref fullscreen))
+        if (ImGui.Checkbox(Localization.T("settings.display.fullscreen"), ref fullscreen))
         {
             ConfigManager.View.Fullscreen = fullscreen;
             HostWindow.SetFullscreen(fullscreen);
@@ -20,48 +22,35 @@ internal sealed class DisplaySettingsSection : ISettingsSection
         }
 
         bool vsync = ConfigManager.View.VSync;
-        if (ImGui.Checkbox("VSync", ref vsync))
+        if (ImGui.Checkbox(Localization.T("settings.display.vsync"), ref vsync))
         {
             ConfigManager.View.VSync = vsync;
             HostWindow.SetVSync(vsync);
             ConfigManager.SaveView(PanelManager.Panels);
         }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Syncs with refresh rate");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.display.vsync_hint"));
 
         bool native = ConfigManager.View.NativeResolution;
-        if (ImGui.Checkbox("Native resolution", ref native))
+        if (ImGui.Checkbox(Localization.T("settings.display.native_resolution"), ref native))
         {
             ConfigManager.View.NativeResolution = native;
             Hle.GpuHle.NativeResolution = native;
             ConfigManager.SaveView(PanelManager.Panels);
-            NoticePopup.Show("You need to restart the application to apply this configuration");
+            NoticePopup.Show(Localization.T("common.restart_required"));
         }
         if (ConfigManager.View.NativeResolution != (Hle.GlVram.Scale == 1))
-            ImGui.TextDisabled("restart is required");
+            ImGui.TextDisabled(Localization.T("settings.display.restart_pending"));
 
         ImGui.Separator();
 
-        string[] backends = ["auto", "gl45", "gl33"];
-        string current = ConfigManager.View.GpuBackend;
-        int index = Array.IndexOf(backends, current);
+        int index = Array.IndexOf(Backends, ConfigManager.View.GpuBackend);
         if (index < 0) index = 0;
-        if (ImGui.Combo("Graphics backend", ref index, backends, backends.Length))
+        if (ImGui.Combo(Localization.T("settings.display.backend"), ref index, Backends, Backends.Length))
         {
-            ConfigManager.View.GpuBackend = backends[index];
+            ConfigManager.View.GpuBackend = Backends[index];
             ConfigManager.SaveView(PanelManager.Panels);
-            NoticePopup.Show("You need to restart the application to apply this configuration");
+            NoticePopup.Show(Localization.T("common.restart_required"));
         }
-        ImGui.TextDisabled($"running: {Hle.GpuBackendFactory.Selected}");
-
-        ImGui.Separator();
-
-        float scale = ConfigManager.View.UiScale;
-        if (ImGui.SliderFloat("UI scale", ref scale, 0.5f, 3f, "%.2fx"))
-        {
-            ConfigManager.View.UiScale = scale;
-            ImGui.GetIO().FontGlobalScale = ConfigManager.View.UiScale;
-            ConfigManager.SaveView(PanelManager.Panels);
-        }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("scales interface");
+        ImGui.TextDisabled(Localization.T("settings.display.backend_running", Hle.GpuBackendFactory.Selected));
     }
 }

@@ -117,6 +117,31 @@ public static class LibCdStream
         _reading = false;
     }
 
+    internal static void Reset()
+    {
+        _run = false;
+        _thread = null;
+
+        lock (_lock)
+        {
+            InUse = false;
+            _active = false;
+            _reading = false;
+            _statusBase = 0;
+            _dataBase = 0;
+            _slots = 0;
+            _pendingLba = -1;
+            _streamLba = -1;
+            _streamStartLba = 0;
+            _writeIdx = 0;
+            _prevStart = -1;
+            _prevN = 0;
+            _busy = System.Array.Empty<bool>();
+            _ready.Clear();
+            _clock.Reset();
+        }
+    }
+
     static void ResetRing(IMemory m)
     {
         _writeIdx = 0;

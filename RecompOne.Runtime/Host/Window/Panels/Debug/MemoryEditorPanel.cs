@@ -9,6 +9,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class MemoryEditorPanel : IPanel
 {
     public string Name => "Memory Editor";
+    public string TitleKey => "panel.memory_editor";
     public bool IsOpen { get; set; }
     const int BytesPerRow = 16;
 
@@ -41,7 +42,7 @@ internal sealed class MemoryEditorPanel : IPanel
     {
         ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open)) { IsOpen = open; ImGui.End(); return; }
+        if (!ImGui.Begin(this.Title(), ref open)) { IsOpen = open; ImGui.End(); return; }
 
         var mem = Runtime.Mem as PSMemory;
         if (mem == null) { ImGui.TextDisabled("No memory"); ImGui.End(); IsOpen = open; return; }

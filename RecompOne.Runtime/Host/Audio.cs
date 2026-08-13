@@ -67,6 +67,10 @@ public static unsafe class Audio
         spu.XaGain = Config.ConfigManager.Game.XaVolume;
     }
 
+    // Mirrors the desktop backend: the mixer loop keeps running, it just stops
+    // pulling samples until a new Spu is attached (used by Runtime.ResetForBoot).
+    public static void Detach() => _spu = null;
+
     public static void SetMasterVolume(float volume)
     {
         _masterVolume = Math.Clamp(volume, 0f, 1f);
@@ -188,6 +192,8 @@ public static unsafe class Audio
         spu.VoiceGain = Config.ConfigManager.Game.SpuVolume;
         spu.XaGain = Config.ConfigManager.Game.XaVolume;
     }
+
+    public static void Detach() => _spu = null;
 
     public static void SetMasterVolume(float volume)
     {

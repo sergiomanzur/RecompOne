@@ -8,6 +8,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class SpuViewerPanel : IPanel
 {
     public string Name => "SPU Viewer";
+    public string TitleKey => "panel.spu_viewer";
     public bool IsOpen { get; set; }
 
     readonly Spu.VoiceDebug[] _voices = new Spu.VoiceDebug[24];
@@ -17,7 +18,7 @@ internal sealed class SpuViewerPanel : IPanel
     {
         ImGui.SetNextWindowSize(new Vector2(860, 520), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open)) { IsOpen = open; ImGui.End(); return; }
+        if (!ImGui.Begin(this.Title(), ref open)) { IsOpen = open; ImGui.End(); return; }
 
         var spu = Runtime.Spu;
         spu.CaptureDebug(_voices, out var st);

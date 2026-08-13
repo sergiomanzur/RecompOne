@@ -7,6 +7,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class ConsolePanel : IPanel
 {
     public string Name => "Console";
+    public string TitleKey => "panel.console";
     public bool IsOpen { get; set; }
 
     readonly List<string> _lines = new();
@@ -20,7 +21,7 @@ internal sealed class ConsolePanel : IPanel
     {
         ImGui.SetNextWindowSize(new Vector2(720, 320), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open, ImGuiWindowFlags.MenuBar)) { IsOpen = open; ImGui.End(); return; }
+        if (!ImGui.Begin(this.Title(), ref open, ImGuiWindowFlags.MenuBar)) { IsOpen = open; ImGui.End(); return; }
 
         DrawMenuBar();
         RefreshLines();

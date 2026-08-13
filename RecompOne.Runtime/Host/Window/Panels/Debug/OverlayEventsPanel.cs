@@ -8,6 +8,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class OverlayEventsPanel : IPanel
 {
     public string Name => "Overlay Events";
+    public string TitleKey => "panel.overlay_events";
     public bool IsOpen { get; set; }
 
     readonly List<OverlayEvent> _snapshot = [];
@@ -24,7 +25,7 @@ internal sealed class OverlayEventsPanel : IPanel
     {
         ImGui.SetNextWindowSize(new Vector2(600, 340), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open, ImGuiWindowFlags.MenuBar))
+        if (!ImGui.Begin(this.Title(), ref open, ImGuiWindowFlags.MenuBar))
         {
             IsOpen = open;
             ImGui.End();

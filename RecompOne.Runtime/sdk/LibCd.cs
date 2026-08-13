@@ -269,6 +269,13 @@ public static class LibCd
     }
 
 
+    internal static void Reset()
+    {
+        _xaRun = false;
+        _xaThread = null;
+        CdResetState();
+    }
+
     static void CdResetState()
     {
         LibCdStream.OnStopStream();

@@ -68,6 +68,24 @@ public class ViewConfig
         set => SetString("GpuBackend", value);
     }
 
+    public string Language
+    {
+        get => GetString("Language");
+        set => SetString("Language", value);
+    }
+
+    public string Accent
+    {
+        get => GetString("Accent");
+        set => SetString("Accent", value);
+    }
+
+    public string Background
+    {
+        get => GetString("Background");
+        set => SetString("Background", value);
+    }
+
     public float UiScale
     {
         get => Math.Clamp(GetFloat("UiScale", 1f), 0.5f, 3f);

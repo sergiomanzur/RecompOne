@@ -1,0 +1,534 @@
+{
+  "languages": {
+    "en": "English",
+    "pt-BR": "Português (Brasil)",
+    "es-419": "Español (Latinoamérica)"
+  },
+  "strings": {
+    "menu.system": {
+      "en": "System",
+      "pt-BR": "Sistema",
+      "es-419": "Sistema"
+    },
+    "menu.system.settings": {
+      "en": "Settings",
+      "pt-BR": "Configurações",
+      "es-419": "Configuración"
+    },
+    "menu.system.show_menu_bar": {
+      "en": "Show Menu Bar",
+      "pt-BR": "Mostrar Barra de Menu",
+      "es-419": "Mostrar Barra de Menú"
+    },
+    "menu.system.autohide_menu_bar": {
+      "en": "Autohide Menu Bar",
+      "pt-BR": "Ocultar Barra Automaticamente",
+      "es-419": "Ocultar Barra Automáticamente"
+    },
+    "menu.system.fullscreen": {
+      "en": "Fullscreen",
+      "pt-BR": "Tela Cheia",
+      "es-419": "Pantalla Completa"
+    },
+    "menu.system.hard_reset": {
+      "en": "Hard Reset",
+      "pt-BR": "Hard Reset",
+      "es-419": "Hard Reset"
+    },
+    "menu.system.quit": {
+      "en": "Quit",
+      "pt-BR": "Sair",
+      "es-419": "Salir"
+    },
+    "menu.mods": {
+      "en": "Mods",
+      "pt-BR": "Mods",
+      "es-419": "Mods"
+    },
+    "menu.mods.manage": {
+      "en": "Manage Mods",
+      "pt-BR": "Gerenciar Mods",
+      "es-419": "Administrar Mods"
+    },
+    "menu.mods.hub": {
+      "en": "Explore Mod Hub",
+      "pt-BR": "Explorar Mod Hub",
+      "es-419": "Explorar Mod Hub"
+    },
+    "menu.debug": {
+      "en": "Debug",
+      "pt-BR": "Depuração",
+      "es-419": "Depuración"
+    },
+    "menu.debug.gpu": {
+      "en": "GPU",
+      "pt-BR": "GPU",
+      "es-419": "GPU"
+    },
+    "menu.debug.cpu": {
+      "en": "CPU",
+      "pt-BR": "CPU",
+      "es-419": "CPU"
+    },
+    "menu.debug.memory": {
+      "en": "Memory",
+      "pt-BR": "Memória",
+      "es-419": "Memoria"
+    },
+    "menu.debug.audio": {
+      "en": "Audio",
+      "pt-BR": "Áudio",
+      "es-419": "Audio"
+    },
+    "menu.debug.cd": {
+      "en": "CD",
+      "pt-BR": "CD",
+      "es-419": "CD"
+    },
+    "menu.debug.system": {
+      "en": "System",
+      "pt-BR": "Sistema",
+      "es-419": "Sistema"
+    },
+    "menu.debug.reset_view": {
+      "en": "Reset View",
+      "pt-BR": "Redefinir Layout",
+      "es-419": "Restablecer Vista"
+    },
+    "panel.output": {
+      "en": "Output",
+      "pt-BR": "Saída",
+      "es-419": "Salida"
+    },
+    "panel.vram_viewer": {
+      "en": "VRAM Viewer",
+      "pt-BR": "Visualizador de VRAM",
+      "es-419": "Visor de VRAM"
+    },
+    "panel.cpu_state": {
+      "en": "CPU State",
+      "pt-BR": "Estado da CPU",
+      "es-419": "Estado de la CPU"
+    },
+    "panel.ram_map": {
+      "en": "RAM Map",
+      "pt-BR": "Mapa da RAM",
+      "es-419": "Mapa de la RAM"
+    },
+    "panel.memory_editor": {
+      "en": "Memory Editor",
+      "pt-BR": "Editor de Memória",
+      "es-419": "Editor de Memoria"
+    },
+    "panel.spu_viewer": {
+      "en": "SPU Viewer",
+      "pt-BR": "Visualizador do SPU",
+      "es-419": "Visor del SPU"
+    },
+    "panel.cd_debug": {
+      "en": "CD Debug",
+      "pt-BR": "Depuração do CD",
+      "es-419": "Depuración del CD"
+    },
+    "panel.console": {
+      "en": "Console",
+      "pt-BR": "Console",
+      "es-419": "Consola"
+    },
+    "panel.overlay_events": {
+      "en": "Overlay Events",
+      "pt-BR": "Eventos de Overlay",
+      "es-419": "Eventos de Overlay"
+    },
+    "common.ok": {
+      "en": "OK",
+      "pt-BR": "OK",
+      "es-419": "Aceptar"
+    },
+    "common.cancel": {
+      "en": "Cancel",
+      "pt-BR": "Cancelar",
+      "es-419": "Cancelar"
+    },
+    "common.confirm": {
+      "en": "Confirm",
+      "pt-BR": "Confirmar",
+      "es-419": "Confirmar"
+    },
+    "common.close": {
+      "en": "Close",
+      "pt-BR": "Fechar",
+      "es-419": "Cerrar"
+    },
+    "common.browse": {
+      "en": "Browse...",
+      "pt-BR": "Procurar...",
+      "es-419": "Buscar..."
+    },
+    "common.understood": {
+      "en": "I understand",
+      "pt-BR": "Eu entendo",
+      "es-419": "Entiendo"
+    },
+    "common.restart_required": {
+      "en": "You need to restart the application to apply this configuration",
+      "pt-BR": "Você precisa reiniciar o aplicativo para aplicar esta configuração",
+      "es-419": "Debes reiniciar la aplicación para aplicar esta configuración"
+    },
+    "common.notice": {
+      "en": "Notice",
+      "pt-BR": "Aviso",
+      "es-419": "Aviso"
+    },
+    "settings.title": {
+      "en": "Settings",
+      "pt-BR": "Configurações",
+      "es-419": "Configuración"
+    },
+    "settings.empty": {
+      "en": "No settings available.",
+      "pt-BR": "Nenhuma configuração disponível.",
+      "es-419": "No hay opciones disponibles."
+    },
+    "settings.interface": {
+      "en": "Interface",
+      "pt-BR": "Interface",
+      "es-419": "Interfaz"
+    },
+    "settings.interface.language": {
+      "en": "Language",
+      "pt-BR": "Idioma",
+      "es-419": "Idioma"
+    },
+    "settings.interface.language_hint": {
+      "en": "Some texts only change after restarting",
+      "pt-BR": "Alguns textos só mudam após reiniciar",
+      "es-419": "Algunos textos solo cambian al reiniciar"
+    },
+    "settings.interface.accent": {
+      "en": "Accent color",
+      "pt-BR": "Cor de destaque",
+      "es-419": "Color de acento"
+    },
+    "settings.interface.background": {
+      "en": "Background color",
+      "pt-BR": "Cor de fundo",
+      "es-419": "Color de fondo"
+    },
+    "background.dark": {
+      "en": "Dark",
+      "pt-BR": "Escuro",
+      "es-419": "Oscuro"
+    },
+    "background.black": {
+      "en": "Black",
+      "pt-BR": "Preto",
+      "es-419": "Negro"
+    },
+    "background.gray": {
+      "en": "Gray",
+      "pt-BR": "Cinza",
+      "es-419": "Gris"
+    },
+    "background.light": {
+      "en": "Light",
+      "pt-BR": "Claro",
+      "es-419": "Claro"
+    },
+    "settings.interface.custom": {
+      "en": "Custom",
+      "pt-BR": "Personalizada",
+      "es-419": "Personalizado"
+    },
+    "settings.interface.ui_scale": {
+      "en": "UI scale",
+      "pt-BR": "Escala da interface",
+      "es-419": "Escala de la interfaz"
+    },
+    "settings.interface.ui_scale_hint": {
+      "en": "Scales the whole interface",
+      "pt-BR": "Redimensiona toda a interface",
+      "es-419": "Escala toda la interfaz"
+    },
+    "theme.blue": {
+      "en": "Blue",
+      "pt-BR": "Azul",
+      "es-419": "Azul"
+    },
+    "theme.purple": {
+      "en": "Purple",
+      "pt-BR": "Roxo",
+      "es-419": "Morado"
+    },
+    "theme.crimson": {
+      "en": "Crimson",
+      "pt-BR": "Carmesim",
+      "es-419": "Carmesí"
+    },
+    "theme.emerald": {
+      "en": "Emerald",
+      "pt-BR": "Esmeralda",
+      "es-419": "Esmeralda"
+    },
+    "theme.amber": {
+      "en": "Amber",
+      "pt-BR": "Âmbar",
+      "es-419": "Ámbar"
+    },
+    "theme.teal": {
+      "en": "Teal",
+      "pt-BR": "Turquesa",
+      "es-419": "Turquesa"
+    },
+    "theme.slate": {
+      "en": "Slate",
+      "pt-BR": "Grafite",
+      "es-419": "Pizarra"
+    },
+    "settings.display": {
+      "en": "Display",
+      "pt-BR": "Vídeo",
+      "es-419": "Video"
+    },
+    "settings.display.fullscreen": {
+      "en": "Fullscreen",
+      "pt-BR": "Tela cheia",
+      "es-419": "Pantalla completa"
+    },
+    "settings.display.vsync": {
+      "en": "VSync",
+      "pt-BR": "VSync",
+      "es-419": "VSync"
+    },
+    "settings.display.vsync_hint": {
+      "en": "Syncs with the monitor refresh rate",
+      "pt-BR": "Sincroniza com a taxa de atualização do monitor",
+      "es-419": "Se sincroniza con la tasa de refresco del monitor"
+    },
+    "settings.display.native_resolution": {
+      "en": "Native resolution",
+      "pt-BR": "Resolução nativa",
+      "es-419": "Resolución nativa"
+    },
+    "settings.display.restart_pending": {
+      "en": "restart is required",
+      "pt-BR": "é necessário reiniciar",
+      "es-419": "se requiere reiniciar"
+    },
+    "settings.display.backend": {
+      "en": "Graphics backend",
+      "pt-BR": "Backend gráfico",
+      "es-419": "Backend gráfico"
+    },
+    "settings.display.backend_running": {
+      "en": "running: {0}",
+      "pt-BR": "em uso: {0}",
+      "es-419": "en uso: {0}"
+    },
+    "settings.audio": {
+      "en": "Audio",
+      "pt-BR": "Áudio",
+      "es-419": "Audio"
+    },
+    "settings.audio.master": {
+      "en": "Master",
+      "pt-BR": "Geral",
+      "es-419": "General"
+    },
+    "settings.audio.spu": {
+      "en": "SPU",
+      "pt-BR": "SPU",
+      "es-419": "SPU"
+    },
+    "settings.audio.spu_hint": {
+      "en": "Sound effects and sequenced music",
+      "pt-BR": "Efeitos sonoros e música sequenciada",
+      "es-419": "Efectos de sonido y música secuenciada"
+    },
+    "settings.audio.xa": {
+      "en": "XA",
+      "pt-BR": "XA",
+      "es-419": "XA"
+    },
+    "settings.audio.xa_hint": {
+      "en": "Streamed audio from the disc",
+      "pt-BR": "Áudio transmitido direto do disco",
+      "es-419": "Audio transmitido desde el disco"
+    },
+    "settings.audio.mute": {
+      "en": "Mute",
+      "pt-BR": "Mudo",
+      "es-419": "Silenciar"
+    },
+    "settings.input": {
+      "en": "Input",
+      "pt-BR": "Controles",
+      "es-419": "Controles"
+    },
+    "settings.input.keyboard": {
+      "en": "Keyboard",
+      "pt-BR": "Teclado",
+      "es-419": "Teclado"
+    },
+    "settings.input.gamepad": {
+      "en": "Gamepad",
+      "pt-BR": "Controle",
+      "es-419": "Control"
+    },
+    "settings.input.pad": {
+      "en": "Pad {0}",
+      "pt-BR": "Controle {0}",
+      "es-419": "Control {0}"
+    },
+    "settings.input.button": {
+      "en": "Button",
+      "pt-BR": "Botão",
+      "es-419": "Botón"
+    },
+    "settings.input.no_gamepad": {
+      "en": "No gamepad connected.",
+      "pt-BR": "Nenhum controle conectado.",
+      "es-419": "No hay ningún control conectado."
+    },
+    "settings.input.unbound": {
+      "en": "unbound",
+      "pt-BR": "sem atalho",
+      "es-419": "sin asignar"
+    },
+    "settings.input.press_key": {
+      "en": "[press key...]",
+      "pt-BR": "[pressione uma tecla...]",
+      "es-419": "[presiona una tecla...]"
+    },
+    "settings.input.press_button": {
+      "en": "[press button...]",
+      "pt-BR": "[pressione um botão...]",
+      "es-419": "[presiona un botón...]"
+    },
+    "settings.input.press_button_add": {
+      "en": "[press button to add...]",
+      "pt-BR": "[pressione um botão para adicionar...]",
+      "es-419": "[presiona un botón para agregar...]"
+    },
+    "settings.input.reset_defaults": {
+      "en": "Reset to Defaults",
+      "pt-BR": "Restaurar Padrões",
+      "es-419": "Restaurar Predeterminados"
+    },
+    "settings.paths": {
+      "en": "Paths",
+      "pt-BR": "Caminhos",
+      "es-419": "Rutas"
+    },
+    "settings.paths.disc": {
+      "en": "Disc",
+      "pt-BR": "Disco",
+      "es-419": "Disco"
+    },
+    "settings.paths.memory_cards": {
+      "en": "Memory cards",
+      "pt-BR": "Memory cards",
+      "es-419": "Memory cards"
+    },
+    "settings.paths.card_a": {
+      "en": "Card A",
+      "pt-BR": "Card A",
+      "es-419": "Card A"
+    },
+    "settings.paths.card_b": {
+      "en": "Card B",
+      "pt-BR": "Card B",
+      "es-419": "Card B"
+    },
+    "mods.title": {
+      "en": "Mods",
+      "pt-BR": "Mods",
+      "es-419": "Mods"
+    },
+    "mods.count": {
+      "en": "{0} mods",
+      "pt-BR": "{0} mods",
+      "es-419": "{0} mods"
+    },
+    "mods.count_one": {
+      "en": "1 mod",
+      "pt-BR": "1 mod",
+      "es-419": "1 mod"
+    },
+    "mods.active": {
+      "en": "{0} active",
+      "pt-BR": "{0} ativo(s)",
+      "es-419": "{0} activo(s)"
+    },
+    "mods.empty": {
+      "en": "No mods found.",
+      "pt-BR": "Nenhum mod encontrado.",
+      "es-419": "No se encontraron mods."
+    },
+    "mods.empty_hint": {
+      "en": "Drop a mod folder or zip into the mods folder and restart.",
+      "pt-BR": "Coloque a pasta ou o zip do mod na pasta mods e reinicie.",
+      "es-419": "Pon la carpeta o el zip del mod en la carpeta mods y reinicia."
+    },
+    "mods.enable": {
+      "en": "Enable",
+      "pt-BR": "Ativar",
+      "es-419": "Activar"
+    },
+    "mods.disable": {
+      "en": "Disable",
+      "pt-BR": "Desativar",
+      "es-419": "Desactivar"
+    },
+    "mods.settings": {
+      "en": "Settings",
+      "pt-BR": "Configurações",
+      "es-419": "Configuración"
+    },
+    "mods.reload": {
+      "en": "Reload",
+      "pt-BR": "Recarregar",
+      "es-419": "Recargar"
+    },
+    "mods.hooks": {
+      "en": "{0} hook(s)",
+      "pt-BR": "{0} hook(s)",
+      "es-419": "{0} hook(s)"
+    },
+    "mods.load_failed": {
+      "en": "failed to load, check the console",
+      "pt-BR": "falha ao carregar, verifique o console",
+      "es-419": "no se pudo cargar, revisa la consola"
+    },
+    "mods.loading": {
+      "en": "Loading mods",
+      "pt-BR": "Carregando mods",
+      "es-419": "Cargando mods"
+    },
+    "disc.title": {
+      "en": "Disc image not found",
+      "pt-BR": "Imagem do disco não encontrada",
+      "es-419": "Imagen del disco no encontrada"
+    },
+    "disc.description": {
+      "en": "Please provide the path to the game's disc file.",
+      "pt-BR": "Informe o caminho do arquivo de disco do jogo.",
+      "es-419": "Ingresa la ruta del archivo de disco del juego."
+    },
+    "disc.filter": {
+      "en": "Disc image",
+      "pt-BR": "Imagem de disco",
+      "es-419": "Imagen de disco"
+    },
+    "disc.error.not_found": {
+      "en": "File was not found, please check the path and try again",
+      "pt-BR": "Arquivo não encontrado, verifique o caminho e tente novamente",
+      "es-419": "No se encontró el archivo, revisa la ruta e inténtalo otra vez"
+    },
+    "disc.error.dialog": {
+      "en": "Failed to open the native picker: {0}",
+      "pt-BR": "Falha ao abrir o seletor nativo: {0}",
+      "es-419": "No se pudo abrir el selector nativo: {0}"
+    }
+  }
+}

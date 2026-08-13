@@ -6,9 +6,9 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class AudioSettingsSection : ISettingsSection
 {
     public string Id => "audio";
-    public string Title => "Audio";
+    public string TitleKey => "settings.audio";
     public int Order => 10;
-    
+
     public static void Apply()
     {
         var game = ConfigManager.Game;
@@ -24,7 +24,7 @@ internal sealed class AudioSettingsSection : ISettingsSection
         var game = ConfigManager.Game;
 
         float volume = game.MasterVolume;
-        if (ImGui.SliderFloat("Master", ref volume, 0f, 1f, "%.2f"))
+        if (ImGui.SliderFloat(Localization.T("settings.audio.master"), ref volume, 0f, 1f, "%.2f"))
         {
             game.MasterVolume = Math.Clamp(volume, 0f, 1f);
             Apply();
@@ -32,27 +32,27 @@ internal sealed class AudioSettingsSection : ISettingsSection
         }
 
         float spu = game.SpuVolume;
-        if (ImGui.SliderFloat("SPU", ref spu, 0f, 1f, "%.2f"))
+        if (ImGui.SliderFloat(Localization.T("settings.audio.spu"), ref spu, 0f, 1f, "%.2f"))
         {
             game.SpuVolume = Math.Clamp(spu, 0f, 1f);
             Apply();
             ConfigManager.SaveGame();
         }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Sound effects and sequented music");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.audio.spu_hint"));
 
         float xa = game.XaVolume;
-        if (ImGui.SliderFloat("XA", ref xa, 0f, 1f, "%.2f"))
+        if (ImGui.SliderFloat(Localization.T("settings.audio.xa"), ref xa, 0f, 1f, "%.2f"))
         {
             game.XaVolume = Math.Clamp(xa, 0f, 1f);
             Apply();
             ConfigManager.SaveGame();
         }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Streamed audio from the disc");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.audio.xa_hint"));
 
         ImGui.Separator();
 
         bool muted = game.Muted;
-        if (ImGui.Checkbox("Mute", ref muted))
+        if (ImGui.Checkbox(Localization.T("settings.audio.mute"), ref muted))
         {
             game.Muted = muted;
             Apply();

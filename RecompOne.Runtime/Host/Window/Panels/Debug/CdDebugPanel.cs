@@ -7,6 +7,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class CdDebugPanel : IPanel
 {
     public string Name => "CD Debug";
+    public string TitleKey => "panel.cd_debug";
     public bool IsOpen { get; set; }
 
     readonly List<string> _events = new();
@@ -16,7 +17,7 @@ internal sealed class CdDebugPanel : IPanel
     {
         ImGui.SetNextWindowSize(new Vector2(640, 420), ImGuiCond.FirstUseEver);
         bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open)) { IsOpen = open; ImGui.End(); return; }
+        if (!ImGui.Begin(this.Title(), ref open)) { IsOpen = open; ImGui.End(); return; }
 
         var cd = Runtime.Cd;
 

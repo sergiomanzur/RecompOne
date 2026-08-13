@@ -40,7 +40,7 @@ public static class SettingsRegistry
             {
                 _sections.Sort((a, b) => a.Order != b.Order
                     ? a.Order.CompareTo(b.Order)
-                    : string.Compare(a.Title, b.Title, StringComparison.Ordinal));
+                    : string.Compare(a.TitleKey, b.TitleKey, StringComparison.Ordinal));
                 _dirty = false;
             }
             return _sections;

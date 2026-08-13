@@ -10,10 +10,8 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class PathsSettingsSection : ISettingsSection
 {
     public string Id => "paths";
-    public string Title => "Paths";
+    public string TitleKey => "settings.paths";
     public int Order => 20;
-
-    const string RestartNotice = "You need to restart the application to apply this configuration";
 
     string _discError = "";
 
@@ -21,51 +19,50 @@ internal sealed class PathsSettingsSection : ISettingsSection
     {
         var game = ConfigManager.Game;
 
-        ImGui.SeparatorText("Disc");
+        ImGui.SeparatorText(Localization.T("settings.paths.disc"));
 
         if (PathRow("##disc", game.CdPath, "cue", false, out string disc))
         {
             var problem = Runtime.ValidateDisc(disc);
-            if (problem != null) _discError = problem;
+            if (problem != null)
+            {
+                _discError = problem;
+            }
             else
             {
                 _discError = "";
                 game.CdPath = disc;
                 ConfigManager.SaveGame();
-                NoticePopup.Show(RestartNotice);
+                NoticePopup.Show(Localization.T("common.restart_required"));
             }
         }
 
         if (_discError.Length > 0)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.3f, 0.3f, 1f));
-            ImGui.TextWrapped(_discError);
-            ImGui.PopStyleColor();
-        }
+            ImGuiEx.TextWrappedColored(new Vector4(1f, 0.38f, 0.38f, 1f), _discError);
 
         ImGui.Spacing();
-        ImGui.SeparatorText("Memory cards");
+        ImGui.SeparatorText(Localization.T("settings.paths.memory_cards"));
 
-        Card("Card A", game.CardAEnabled, v => game.CardAEnabled = v, game.CardAPath, p => game.CardAPath = p);
+        Card("settings.paths.card_a", game.CardAEnabled, v => game.CardAEnabled = v, game.CardAPath, p => game.CardAPath = p);
         ImGui.Spacing();
-        Card("Card B", game.CardBEnabled, v => game.CardBEnabled = v, game.CardBPath, p => game.CardBPath = p);
+        Card("settings.paths.card_b", game.CardBEnabled, v => game.CardBEnabled = v, game.CardBPath, p => game.CardBPath = p);
     }
 
-    void Card(string label, bool enabled, Action<bool> setEnabled, string path, Action<string> setPath)
+    static void Card(string labelKey, bool enabled, Action<bool> setEnabled, string path, Action<string> setPath)
     {
         bool on = enabled;
-        if (ImGui.Checkbox(label, ref on))
+        if (ImGui.Checkbox(Localization.T(labelKey), ref on))
         {
             setEnabled(on);
             ConfigManager.SaveGame();
-            NoticePopup.Show(RestartNotice);
+            NoticePopup.Show(Localization.T("common.restart_required"));
         }
 
-        if (PathRow($"##{label}", path, "sav", true, out string picked))
+        if (PathRow($"##{labelKey}", path, "sav", true, out string picked))
         {
             setPath(picked);
             ConfigManager.SaveGame();
-            NoticePopup.Show(RestartNotice);
+            NoticePopup.Show(Localization.T("common.restart_required"));
         }
     }
 
@@ -73,27 +70,27 @@ internal sealed class PathsSettingsSection : ISettingsSection
     {
         result = "";
 
-        float browse = 80;
+        float browse = 90f;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - browse - spacing);
 
-        string buf = current ?? "";
+        string buffer = current ?? "";
         bool changed = false;
-        if (ImGui.InputText(id, ref buf, 1024, ImGuiInputTextFlags.EnterReturnsTrue))
+        if (ImGui.InputText(id, ref buffer, 1024, ImGuiInputTextFlags.EnterReturnsTrue))
         {
-            result = buf.Trim();
+            result = buffer.Trim();
             changed = true;
         }
 
         ImGui.SameLine();
-        if (ImGui.Button($"Browse...{id}", new Vector2(browse, 0)))
+        if (ImGui.Button($"{Localization.T("common.browse")}{id}", new Vector2(browse, 0f)))
         {
 #if !ANDROID
-            string? dir = null;
+            string? directory = null;
             try
             {
                 if (!string.IsNullOrWhiteSpace(current) && File.Exists(current))
-                    dir = Path.GetDirectoryName(Path.GetFullPath(current));
+                    directory = Path.GetDirectoryName(Path.GetFullPath(current));
             }
             catch
             {
@@ -103,7 +100,7 @@ internal sealed class PathsSettingsSection : ISettingsSection
             if (save) dialog.SaveFile(); else dialog.SelectFile();
             if (!string.IsNullOrWhiteSpace(filter)) dialog.AddFilter("Files", filter);
 
-            if (dialog.Open(out string? picked, dir) == DialogResult.Okay && !string.IsNullOrWhiteSpace(picked))
+            if (dialog.Open(out string? picked, directory) == DialogResult.Okay && !string.IsNullOrWhiteSpace(picked))
             {
                 result = picked;
                 changed = true;

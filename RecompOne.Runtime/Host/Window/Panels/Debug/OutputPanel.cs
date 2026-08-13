@@ -6,6 +6,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class OutputPanel : IPanel
 {
     public string Name => "Output";
+    public string TitleKey => "panel.output";
     
     public bool IsOpen { get => true; set { } }
     static uint _texId;
@@ -14,16 +15,21 @@ internal sealed class OutputPanel : IPanel
 
     public static uint TextureId => _texId;
 
+    public static bool IsDocked { get; private set; }
+
     public static void SetTexture(uint id, int w, int h, float aspect = 0f, float uMax = 1.0f)
         => (_texId, _texW, _texH, _aspect) = (id, w, h, aspect > 0f ? aspect : 4f / 3f);
-    
+
     //idea: in the future make this be able to draw images so you can have ornamented backgrounds
     public void Draw()
     {
         ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0f, 0f, 0f, 1f));
 
-        if (!ImGui.Begin(Name, ImGuiWindowFlags.NoCollapse))
+        bool visible = ImGui.Begin(this.Title());
+        IsDocked = ImGui.IsWindowDocked();
+
+        if (!visible)
         {
             ImGui.End();
             ImGui.PopStyleColor();
@@ -38,6 +44,8 @@ internal sealed class OutputPanel : IPanel
             ImGui.SetCursorPos(ImGui.GetCursorPos() + offset);
             ImGui.Image((nint)_texId, imageSize);
         }
+
+        ToastNotifications.Draw();
 
         ImGui.End();
         ImGui.PopStyleColor();

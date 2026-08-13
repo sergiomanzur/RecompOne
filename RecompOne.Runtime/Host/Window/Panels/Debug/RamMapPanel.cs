@@ -8,6 +8,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class RamMapPanel : IPanel
 {
     public string Name => "RAM Map";
+    public string TitleKey => "panel.ram_map";
     public bool IsOpen { get; set; }
 
     static uint _texId;
@@ -21,7 +22,7 @@ internal sealed class RamMapPanel : IPanel
         ImGui.SetNextWindowSize(new Vector2(820, 300), ImGuiCond.FirstUseEver);
 
         bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open, flags)) { IsOpen = open; ImGui.End(); return; }
+        if (!ImGui.Begin(this.Title(), ref open, flags)) { IsOpen = open; ImGui.End(); return; }
 
         DrawMenuBar();
         DrawMap();

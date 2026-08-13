@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using RecompOne.Runtime.Host;
+using RecompOne.Runtime.Host.Window;
 
 namespace RecompOne.Runtime.Modding;
 
@@ -55,8 +56,13 @@ public static class ModLoader
 
     public static string Root { get; private set; } = "";
 
+    static bool _loaded;
+
     public static void LoadAll(string? root = null)
     {
+        if (_loaded) return;
+        _loaded = true;
+
         root ??= Path.GetFullPath("mods");
         Directory.CreateDirectory(root);
         Root = root;

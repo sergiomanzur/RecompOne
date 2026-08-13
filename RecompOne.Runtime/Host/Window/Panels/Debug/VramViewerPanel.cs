@@ -6,6 +6,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class VramViewerPanel : IPanel
 {
     public string Name => "VRAM Viewer";
+    public string TitleKey => "panel.vram_viewer";
     public bool IsOpen { get; set; }
 
     static uint _texId;
@@ -21,7 +22,7 @@ internal sealed class VramViewerPanel : IPanel
         ImGui.SetNextWindowSize(new Vector2(800, 450), ImGuiCond.FirstUseEver);
 
         bool open = IsOpen;
-        if (!ImGui.Begin(Name, ref open, flags)) { IsOpen = open; ImGui.End(); return; }
+        if (!ImGui.Begin(this.Title(), ref open, flags)) { IsOpen = open; ImGui.End(); return; }
         DrawMenuBar();
         DrawImage();
         IsOpen = open;

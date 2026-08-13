@@ -17,6 +17,12 @@ public static class LibPad
     static int _smallMotorIdx = 0;
     static int _largeMotorIdx = 1;
 
+    internal static void Reset()
+    {
+        _buf1 = 0;
+        _buf2 = 0;
+    }
+
     public static void PadInitDirect(CpuContext c, IMemory m)
     {
         _buf1 = c.A0;
