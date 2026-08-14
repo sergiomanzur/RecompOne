@@ -77,24 +77,62 @@ internal static unsafe class InputManager
     public static void Poll()
     {
         PollGamepadEvents();
+#if ANDROID
+        PollAndroid();
+#else
         PollKeyboard();
         PollGamepads();
-#if ANDROID
-        PollTouchScreen();
 #endif
         Controller.Connected2 = _pad1 != null || HasAnyKey(ConfigManager.Game.Keys2);
     }
 
-    static void PollTouchScreen()
+#if ANDROID
+    // Android has two independent producers: the physical pad through SDL and the
+    // on-screen overlay through Controller.SetExternalState. Rebuild the whole state
+    // from scratch every frame and AND the sources together.
+    //
+    // This used to accumulate into the previous frame's value, which could never
+    // release anything: PadState only ever clears bits (pressed = 0) and nothing on
+    // the Android path put them back, so the first press of a button - or the first
+    // push of the stick, which is bound to the d-pad bits - latched permanently and
+    // the character kept walking in that direction. The overlay had the mirror-image
+    // bug, assigning Controller.State outright and wiping the physical pad.
+    static void PollAndroid()
     {
-        var m = _mouse;
-        if (m == null || !m.IsButtonPressed(MouseButton.Left)) return;
-        if (m.Position.Y < 150)
+        ushort s = 0xFFFF;
+
+        if (_pad0 != null) s = PadState(_pad0, ConfigManager.Game.Pad, s);
+
+        var kb = _keyboard;
+        if (kb != null) s &= KeyState(kb, ConfigManager.Game.Keys);
+
+        Controller.State = (ushort)(s & Controller.ConsumeExternalState());
+
+        // A real stick wins over the overlay's virtual one; when no pad is attached
+        // leave the axes alone so the on-screen joystick keeps working.
+        if (_pad0 != null && _sdl != null)
         {
-            if (m.Position.X < 300) Controller.State &= unchecked((ushort)~Controller.L1);
-            else Controller.State &= unchecked((ushort)~Controller.R1);
+            Controller.LeftX  = AxisToByte(_sdl.GameControllerGetAxis(_pad0, GameControllerAxis.Leftx));
+            Controller.LeftY  = AxisToByte(_sdl.GameControllerGetAxis(_pad0, GameControllerAxis.Lefty));
+            Controller.RightX = AxisToByte(_sdl.GameControllerGetAxis(_pad0, GameControllerAxis.Rightx));
+            Controller.RightY = AxisToByte(_sdl.GameControllerGetAxis(_pad0, GameControllerAxis.Righty));
+        }
+
+        if (_pad1 != null)
+        {
+            Controller.State2 = PadState(_pad1, ConfigManager.Game.Pad2, 0xFFFF);
+            Controller.LeftX2  = AxisToByte(_sdl!.GameControllerGetAxis(_pad1, GameControllerAxis.Leftx));
+            Controller.LeftY2  = AxisToByte(_sdl!.GameControllerGetAxis(_pad1, GameControllerAxis.Lefty));
+            Controller.RightX2 = AxisToByte(_sdl!.GameControllerGetAxis(_pad1, GameControllerAxis.Rightx));
+            Controller.RightY2 = AxisToByte(_sdl!.GameControllerGetAxis(_pad1, GameControllerAxis.Righty));
+        }
+        else
+        {
+            Controller.State2 = 0xFFFF;
+            Controller.LeftX2 = Controller.LeftY2 = Controller.RightX2 = Controller.RightY2 = 0x80;
         }
     }
+#endif
 
     public static int? GetFirstPressedPadButton(int pad = 0)
     {
