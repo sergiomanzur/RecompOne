@@ -56,6 +56,13 @@ public static class ModLoader
 
     public static string Root { get; private set; } = "";
 
+    /// <summary>
+    /// Folder to load mods from when the caller does not pass one. Lets a host point the
+    /// loader somewhere other than "mods" next to the executable - the Android build uses it
+    /// so players can keep mods outside the app's private storage.
+    /// </summary>
+    public static string? RootOverride { get; set; }
+
     static bool _loaded;
 
     public static void LoadAll(string? root = null)
@@ -63,7 +70,7 @@ public static class ModLoader
         if (_loaded) return;
         _loaded = true;
 
-        root ??= Path.GetFullPath("mods");
+        root ??= RootOverride ?? Path.GetFullPath("mods");
         Directory.CreateDirectory(root);
         Root = root;
         _cacheDir = Path.Combine(root, ".cache");
