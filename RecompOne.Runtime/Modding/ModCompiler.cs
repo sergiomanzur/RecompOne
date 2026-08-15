@@ -40,14 +40,32 @@ public static class ModCompiler
         {
             if (a.IsDynamic) continue;
 
-            if (!string.IsNullOrEmpty(a.Location))
+            // Location must be checked, not just non-empty. On Android it comes back as a
+            // path that does not exist (files/System.Private.CoreLib), so CreateFromFile threw
+            // FileNotFound and the raw-metadata fallback below was never reached.
+            try
             {
-                refs.Add(MetadataReference.CreateFromFile(a.Location));
-                continue;
+                if (!string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
+                {
+                    refs.Add(MetadataReference.CreateFromFile(a.Location));
+                    continue;
+                }
+            }
+            catch
+            {
+                // fall through to the bundled metadata below
             }
 
            //use the budnled dll instead of trying to find ones that odnt exist, should fix mod on single file publish
-            if (a.TryGetRawMetadata(out byte* blob, out int length)) refs.Add(AssemblyMetadata.Create(ModuleMetadata.CreateFromMetadata((IntPtr)blob, length)).GetReference());
+            try
+            {
+                if (a.TryGetRawMetadata(out byte* blob, out int length)) refs.Add(AssemblyMetadata.Create(ModuleMetadata.CreateFromMetadata((IntPtr)blob, length)).GetReference());
+            }
+            catch (Exception ex)
+            {
+                // One unreadable assembly should not stop every mod from building.
+                Console.Error.WriteLine($"[Mods] skipping reference {a.GetName().Name}: {ex.Message}");
+            }
         }
 
         _references = refs;

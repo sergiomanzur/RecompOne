@@ -357,15 +357,15 @@ public static class ModLoader
             }
             else
             {
-#if !ANDROID
+                // Android compiles mods too. Roslyn is referenced for every target framework,
+                // and References() already falls back to TryGetRawMetadata for assemblies with
+                // no Location, which is exactly how assemblies are bundled on Android - the
+                // same path that made single-file publishes work. Mods that reference the game
+                // assembly can only be built here, because that assembly does not exist as a
+                // file to compile against ahead of time.
                 Console.WriteLine($"[Mods] building {mod.Info.Id}...");
                 bytes = ModCompiler.Compile(mod.Info.Id, mod.Sources);
                 if (bytes == null) { mod.LoadError = "compilation failed, check the console"; return; }
-#else
-                Console.Error.WriteLine($"[Mods] {mod.Info.Id}: Mod runtime compilation is disabled on Android. Place precompiled mod DLLs in the .cache folder.");
-                mod.LoadError = "compilation disabled on Android";
-                return;
-#endif
                 try
                 {
                     Directory.CreateDirectory(_cacheDir);
