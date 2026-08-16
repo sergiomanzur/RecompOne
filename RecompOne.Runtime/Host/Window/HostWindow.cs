@@ -444,7 +444,12 @@ public static class HostWindow
     static int _uDirectTex;
 
     static float _directUMax = 1.0f;
-    static unsafe void RenderDirectDisplay(GL gl, int screenW, int screenH, uint overrideTex = 0, float uMax = 1.0f)
+
+    // The aspect the game actually rendered this frame, as reported by the backend. Widescreen
+    // makes the frame genuinely wider, so presenting it against a fixed ratio would squash it.
+    static float _directAspect = 4f / 3f;
+
+    static unsafe void RenderDirectDisplay(GL gl, int screenW, int screenH, uint overrideTex = 0, float uMax = 1.0f, float contentAspect = 0f)
     {
         uint tex = overrideTex != 0 ? overrideTex : OutputPanel.TextureId;
         if (tex == 0) tex = _displayTex;
@@ -505,55 +510,52 @@ public static class HostWindow
 
         if (_directProg == 0 || _directVbo == 0) return;
 
+        // Present at whatever ratio the game rendered at. Choosing the ratio here instead was
+        // what stretched the picture: asking for 16:9 only widened the destination rectangle
+        // while the frame inside it was still 4:3, so every pixel got pulled sideways. A wider
+        // picture has to come from rendering wider (WidescreenPatch), not from scaling.
+        float content = contentAspect > 0f ? contentAspect : 4f / 3f;
+
         int vx, vy, vw, vh;
-        if (screenW < screenH)
+        if (CurrentAspectRatio == AspectRatioMode.Stretch)
         {
-            // --- PORTRAIT ORIENTATION ---
-            // Fit game screen centered in vertical middle of portrait display
+            // The one mode that distorts on purpose.
+            vx = vy = 0;
             vw = screenW;
-            vh = (int)(vw * 3.0f / 4.0f);
-            if (vh > (int)(screenH * 0.55f))
+            vh = screenH;
+        }
+        else if (screenW < screenH)
+        {
+            // --- PORTRAIT ---
+            // Across the width, centred, but capped so the touch pad keeps its room below.
+            vw = screenW;
+            vh = (int)(vw / content);
+            int maxH = (int)(screenH * 0.55f);
+            if (vh > maxH)
             {
-                vh = (int)(screenH * 0.55f);
-                vw = (int)(vh * 4.0f / 3.0f);
+                vh = maxH;
+                vw = (int)(vh * content);
             }
             vx = (screenW - vw) / 2;
-            vy = (screenH - vh) / 2; // Vertical middle of screen
+            vy = (screenH - vh) / 2;
         }
         else
         {
-            // --- LANDSCAPE ORIENTATION ---
-            float targetRatio = CurrentAspectRatio switch
+            // --- LANDSCAPE ---
+            // Letterbox or pillarbox, never squash.
+            float screenRatio = (float)screenW / screenH;
+            if (screenRatio > content)
             {
-                AspectRatioMode.Widescreen_16_9 => 16.0f / 9.0f,
-                AspectRatioMode.Stretch => (float)screenW / screenH,
-                _ => 4.0f / 3.0f // AutoDevice & Original 4:3
-            };
-
-            if (CurrentAspectRatio == AspectRatioMode.Stretch)
-            {
-                vx = vy = 0;
-                vw = screenW;
                 vh = screenH;
+                vw = (int)(vh * content);
             }
             else
             {
-                float screenRatio = (float)screenW / screenH;
-                if (screenRatio > targetRatio)
-                {
-                    vh = screenH;
-                    vw = (int)(vh * targetRatio);
-                    vx = (screenW - vw) / 2;
-                    vy = 0;
-                }
-                else
-                {
-                    vw = screenW;
-                    vh = (int)(vw / targetRatio);
-                    vx = 0;
-                    vy = (screenH - vh) / 2;
-                }
+                vw = screenW;
+                vh = (int)(vw / content);
             }
+            vx = (screenW - vw) / 2;
+            vy = (screenH - vh) / 2;
         }
 
         gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
@@ -638,12 +640,16 @@ public static class HostWindow
                     OutputPanel.SetTexture(tex, tw, th, aspect, uMax);
                     directTex = tex;
                     _directUMax = uMax;
+                    // Widescreen renders a wider frame, and this is the only place that knows
+                    // how wide it came out.
+                    _directAspect = aspect > 0f ? aspect : 4f / 3f;
                 }
                 else
                 {
                     UploadDisplayTexture(gl, gpu);
                     directTex = OutputPanel.TextureId;
                     _directUMax = 1.0f;
+                    _directAspect = Hle.GpuHle.OutputAspect;
                 }
                 gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
                 gl.Viewport(0, 0, (uint)wf.X, (uint)wf.Y);
@@ -652,6 +658,7 @@ public static class HostWindow
             {
                 UploadDisplayTexture(gl, gpu);
                 directTex = OutputPanel.TextureId;
+                _directAspect = Hle.GpuHle.OutputAspect;
             }
 
             if (PanelManager.Get<VramViewerPanel>()?.IsOpen == true)
@@ -665,7 +672,7 @@ public static class HostWindow
         }
 
 #if ANDROID
-        RenderDirectDisplay(gl, fbDef.X, fbDef.Y, directTex, _directUMax);
+        RenderDirectDisplay(gl, fbDef.X, fbDef.Y, directTex, _directUMax, _directAspect);
 #else
         if (_imgui != null)
         {
@@ -681,7 +688,7 @@ public static class HostWindow
         }
         else
         {
-            RenderDirectDisplay(gl, fbDef.X, fbDef.Y, directTex);
+            RenderDirectDisplay(gl, fbDef.X, fbDef.Y, directTex, _directUMax, _directAspect);
         }
 #endif
     }
