@@ -30,9 +30,13 @@ public static unsafe class Audio
                 ChannelOut.Stereo,
                 Encoding.Pcm16bit);
 
-            int bufSize = Math.Max(minBufSize, 44100 * 2 * 2 / 10);
+            // Was pinned to a tenth of a second, which is audible as a lag behind the action.
+            // Two times the device's own minimum keeps enough headroom to absorb a late mix
+            // while roughly halving the delay; the floor stops a device reporting a tiny
+            // minimum from leaving no margin at all.
+            int bufSize = Math.Max(minBufSize * 2, 44100 * 2 * 2 / 20); // ~50 ms
 
-            _track = new AudioTrack.Builder()
+            var builder = new AudioTrack.Builder()
                 .SetAudioAttributes(new AudioAttributes.Builder()
                     .SetUsage(AudioUsageKind.Media)
                     .SetContentType(AudioContentType.Music)
@@ -43,13 +47,27 @@ public static unsafe class Audio
                     .SetChannelMask(ChannelOut.Stereo)
                     .Build())
                 .SetBufferSizeInBytes(bufSize)
-                .SetTransferMode(AudioTrackMode.Stream)
-                .Build();
+                .SetTransferMode(AudioTrackMode.Stream);
+
+            // Asks the platform for the shorter mixing path. Oreo and up only, and the device
+            // is free to decline, so it stays best-effort.
+            if (global::Android.OS.Build.VERSION.SdkInt >= global::Android.OS.BuildVersionCodes.O)
+            {
+                try { builder = builder.SetPerformanceMode(AudioTrackPerformanceMode.LowLatency)!; }
+                catch (Exception ex) { Console.WriteLine($"[AndroidAudio] Low latency mode unavailable: {ex.Message}"); }
+            }
+
+            _track = builder.Build();
 
             _track.Play();
 
             _running = true;
-            _mixerThread = new Thread(MixerLoop) { IsBackground = true, Name = "spu-mixer-android" };
+            _mixerThread = new Thread(MixerLoop)
+            {
+                IsBackground = true,
+                Name = "spu-mixer-android",
+                Priority = System.Threading.ThreadPriority.Highest,
+            };
             _mixerThread.Start();
             Console.WriteLine("[AndroidAudio] AudioTrack started successfully.");
         }
@@ -96,6 +114,12 @@ public static unsafe class Audio
 
     private static void MixerLoop()
     {
+        // Android's scheduler, not the CLR, decides whether this thread runs ahead of the
+        // render thread, and a managed Highest means little to it. Without the audio priority
+        // class the mixer gets preempted mid-frame and the track runs dry - heard as crackling.
+        try { global::Android.OS.Process.SetThreadPriority(global::Android.OS.ThreadPriority.UrgentAudio); }
+        catch (Exception ex) { Console.WriteLine($"[AndroidAudio] Could not raise mixer priority: {ex.Message}"); }
+
         while (_running)
         {
             if (_isPaused)
