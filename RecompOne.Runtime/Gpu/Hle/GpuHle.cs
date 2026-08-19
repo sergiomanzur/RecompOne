@@ -9,7 +9,8 @@ public static class GpuHle
     public static float OutputAspect { get; set; } = 4f / 3f;
 
     public static float SourceAspect { get; set; } = 4f / 3f;
-    public static bool NativeResolution { get; set; }
+    public static int LastDisplayW { get; set; }
+    public static int LastDisplayH { get; set; }
     public static float TargetAspect { get; set; } = 4f / 3f;
     public const float BaseAspect = 4f / 3f;
 

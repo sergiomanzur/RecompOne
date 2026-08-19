@@ -79,51 +79,75 @@ public static class HostWindow
         return 1f;
     }
 
-    static GraphicsAPI MaxSupportedApi() =>
+    static GraphicsAPI[] ApiChain()
+    {
 #if ANDROID
-        new GraphicsAPI(ContextAPI.OpenGLES, ContextProfile.Core, ContextFlags.Default, new APIVersion(3, 0));
+        // Android only ever offers GLES, and the desktop fallback chain (4.5 -> 3.3 -> 2.1
+        // compatibility) has nothing to fall back to here, so there is a single entry.
+        return [new GraphicsAPI(ContextAPI.OpenGLES, ContextProfile.Core, ContextFlags.Default, new APIVersion(3, 0))];
 #else
-        OperatingSystem.IsMacOS()
-            ? new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, new APIVersion(4, 1))
-            : new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(4, 5));
+        if (OperatingSystem.IsMacOS())
+            return [new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, new APIVersion(4, 1))];
+
+        var requested = Hle.GpuBackendFactory.Parse(ConfigManager.View.GpuBackend);
+        var core45 = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(4, 5));
+        var core33 = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(3, 3));
+        var compat21 = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Compatability, ContextFlags.Default, new APIVersion(2, 1));
+
+        return requested switch
+        {
+            Hle.GlBackendKind.Gl21 => [compat21],
+            Hle.GlBackendKind.Gl33 => [core33, compat21],
+            _ => [core45, core33, compat21],
+        };
 #endif
+    }
 
     public static void Initialize(string title)
     {
         ConfigManager.Load();
 
-        try
+        foreach (var api in ApiChain())
         {
+            try
+            {
 #if ANDROID
-            var viewOptions = ViewOptions.Default with
-            {
-                API = MaxSupportedApi(),
-                VSync = ConfigManager.View.VSync,
-            };
-            _window = Silk.NET.Windowing.Window.GetView(viewOptions);
+                var viewOptions = ViewOptions.Default with
+                {
+                    API = api,
+                    VSync = ConfigManager.View.VSync,
+                };
+                _window = Silk.NET.Windowing.Window.GetView(viewOptions);
 #else
-            var options = WindowOptions.Default with
-            {
-                Size = new Vector2D<int>(1280, 720),
-                Title = title,
-                VSync = ConfigManager.View.VSync,
-                UpdatesPerSecond = 0,
-                FramesPerSecond = 0,
-                WindowState = ConfigManager.View.Fullscreen ? WindowState.Fullscreen : WindowState.Normal,
-                API = MaxSupportedApi(),
-            };
-            _window = Silk.NET.Windowing.Window.Create(options);
+                var options = WindowOptions.Default with
+                {
+                    Size = new Vector2D<int>(1280, 720),
+                    Title = title,
+                    VSync = ConfigManager.View.VSync,
+                    UpdatesPerSecond = 0,
+                    FramesPerSecond = 0,
+                    WindowState = ConfigManager.View.Fullscreen ? WindowState.Fullscreen : WindowState.Normal,
+                    API = api,
+                };
+                _window = Silk.NET.Windowing.Window.Create(options);
 #endif
-            _window.Load += OnLoad;
-            _window.Render += OnRender;
-            _window.Closing += OnClosing;
-            _window.Initialize();
+                FrameClock.VSync = ConfigManager.View.VSync;
+                _window.Load += OnLoad;
+                _window.Render += OnRender;
+                _window.Closing += OnClosing;
+                _window.Initialize();
+                Console.WriteLine($"[Host] gl context {api.Version.MajorVersion}.{api.Version.MinorVersion} {api.Profile}");
+                return;
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine($"[Host] context {api.Version.MajorVersion}.{api.Version.MinorVersion} unavailable: {e.Message}");
+                _window = null;
+            }
         }
-        catch (Exception e)
-        {
-            Console.Error.WriteLine($"[Host] window unavailable {e.Message}");
-            _headless = true;
-        }
+
+        Console.Error.WriteLine("[Host] no usable gl context were found");
+        _headless = true;
     }
 
     public static string Title
@@ -348,13 +372,12 @@ public static class HostWindow
         _vramTex= CreateTexture(_gl);
         _ramTex = CreateTexture(_gl);
 
-        Hle.GlVram.Scale = ConfigManager.View.NativeResolution ? 1 : 4;
+        Hle.GlVram.Scale = ConfigManager.View.RenderScale;
         _glBackend = (Hle.GlCore)Hle.GpuBackendFactory.Create(_gl,
             Hle.GpuBackendFactory.Parse(ConfigManager.View.GpuBackend));
         _glBackend.InitGl();
         Hle.GpuHle.Active = _glBackend.Ready;
         Hle.GpuHle.Backend = _glBackend;
-        Hle.GpuHle.NativeResolution = ConfigManager.View.NativeResolution;
 
         try
         {
@@ -368,6 +391,7 @@ public static class HostWindow
 
         PanelManager.Register(new OutputPanel());
         PanelManager.Register(new VramViewerPanel());
+        PanelManager.Register(new TextureInspectorPanel());
         PanelManager.Register(new CpuStatePanel());
         PanelManager.Register(new RamMapPanel());
         PanelManager.Register(new MemoryEditorPanel());
@@ -409,7 +433,14 @@ public static class HostWindow
         io.FontGlobalScale = Config.ConfigManager.View.UiScale;
         unsafe { io.NativePtr->IniFilename = null; }
 
-        Icons.Load(13f * _dpiScale);
+#if !ANDROID
+        // Android builds an ImGui context (OnRender still ticks it) but never draws a single
+        // ImGui window - RenderDirectDisplay puts the game on screen and the menu is native
+        // Android views. Building the atlas would still rasterise the merged Japanese and
+        // Simplified Chinese ranges into a texture nothing samples, on the device least able
+        // to spare the memory, so leave ImGui on its small built-in font there.
+        FontSet.Load(16f * _dpiScale);
+#endif
         Localization.Load();
         Theme.Load();
 
@@ -421,7 +452,9 @@ public static class HostWindow
 
     public static void SetVSync(bool on)
     {
-        if (_window is IWindow w) w.VSync = on;
+        if (_window != null) _window.VSync = on;
+        FrameClock.VSync = on;
+        FrameClock.Resync();
     }
 
     public enum AspectRatioMode
@@ -593,14 +626,13 @@ public static class HostWindow
             PendingGpuBackendReset = false;
             try
             {
-                Hle.GlVram.Scale = ConfigManager.View.NativeResolution ? 1 : 4;
+                Hle.GlVram.Scale = ConfigManager.View.RenderScale;
                 _glBackend?.Dispose();
                 _glBackend = (Hle.GlCore)Hle.GpuBackendFactory.Create(gl,
                     Hle.GpuBackendFactory.Parse(ConfigManager.View.GpuBackend));
                 _glBackend.InitGl();
                 Hle.GpuHle.Active = _glBackend.Ready;
                 Hle.GpuHle.Backend = _glBackend;
-                Hle.GpuHle.NativeResolution = ConfigManager.View.NativeResolution;
             }
             catch (Exception e)
             {

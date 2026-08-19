@@ -15,9 +15,9 @@ public static class LibGpu
         var gpu = Runtime.Gpu;
         if (gpu == null) return;
 
-        uint addr = c.A0 & 0x1FFFFCu;
+        uint addr = c.A0 & Runtime.RamWordMask;
         bool custom = GpuPrims.Any && GpuPrims.OtLength > 0;
-        uint otBase = GpuPrims.OtBase & 0x1FFFFCu;
+        uint otBase = GpuPrims.OtBase & Runtime.RamWordMask;
         uint otEnd = otBase + (uint)GpuPrims.OtLength * 4u;
 
         for (int guard = 0; guard < 0x100000; guard++)
@@ -31,7 +31,7 @@ public static class LibGpu
                 gpu.WriteGp0(m.ReadU32(addr + 4u + i * 4u));
             uint next = header & 0xFFFFFFu;
             if (next == 0xFFFFFFu || (next & 0x800000u) != 0) break;
-            addr = next & 0x1FFFFCu;
+            addr = next & Runtime.RamWordMask;
         }
 
         if (custom) GpuPrims.Clear();
@@ -152,6 +152,83 @@ public static class LibGpu
         x = short.Clamp(x, 0, VramShadow.Width - 1);
         y = short.Clamp(y, 0, VramShadow.Height - 1);
         return 0xE4000000u | (((uint)y & 0x3FF) << 10) | ((uint)x & 0x3FF);
+    }
+
+    public static void LoadImage(CpuContext c, IMemory m)
+    {
+        var gpu = Runtime.Gpu;
+        if (gpu == null) { c.V0 = 0u; return; }
+
+        uint rect = c.A0, src = c.A1;
+        ushort x = m.ReadU16(rect), y = m.ReadU16(rect + 2);
+        ushort w = m.ReadU16(rect + 4), h = m.ReadU16(rect + 6);
+        if (w == 0 || h == 0) { c.V0 = 0u; return; }
+
+        gpu.WriteGp0(0xA0000000u);
+        gpu.WriteGp0(((uint)y << 16) | x);
+        gpu.WriteGp0(((uint)h << 16) | w);
+
+        uint words = ((uint)w * h + 1u) >> 1;
+        for (uint i = 0; i < words; i++)
+            gpu.WriteGp0(m.ReadU32(src + i * 4u));
+
+        c.V0 = 0u;
+    }
+
+    public static void StoreImage(CpuContext c, IMemory m)
+    {
+        var gpu = Runtime.Gpu;
+        if (gpu == null) { c.V0 = 0u; return; }
+
+        uint rect = c.A0, dst = c.A1;
+        ushort x = m.ReadU16(rect), y = m.ReadU16(rect + 2);
+        ushort w = m.ReadU16(rect + 4), h = m.ReadU16(rect + 6);
+        if (w == 0 || h == 0) { c.V0 = 0u; return; }
+
+        gpu.WriteGp0(0xC0000000u);
+        gpu.WriteGp0(((uint)y << 16) | x);
+        gpu.WriteGp0(((uint)h << 16) | w);
+
+        uint words = ((uint)w * h + 1u) >> 1;
+        for (uint i = 0; i < words; i++)
+            m.WriteU32(dst + i * 4u, gpu.ReadData());
+
+        c.V0 = 0u;
+    }
+
+    public static void MoveImage(CpuContext c, IMemory m)
+    {
+        var gpu = Runtime.Gpu;
+        if (gpu == null) { c.V0 = 0u; return; }
+
+        uint rect = c.A0;
+        ushort sx = m.ReadU16(rect), sy = m.ReadU16(rect + 2);
+        ushort w = m.ReadU16(rect + 4), h = m.ReadU16(rect + 6);
+        if (w == 0 || h == 0) { c.V0 = 0u; return; }
+
+        gpu.WriteGp0(0x80000000u);
+        gpu.WriteGp0(((uint)sy << 16) | sx);
+        gpu.WriteGp0(((c.A3 & 0xFFFFu) << 16) | (c.A2 & 0xFFFFu));
+        gpu.WriteGp0(((uint)h << 16) | w);
+
+        c.V0 = 0u;
+    }
+
+    public static void ClearImage(CpuContext c, IMemory m)
+    {
+        var gpu = Runtime.Gpu;
+        if (gpu == null) { c.V0 = 0u; return; }
+
+        uint rect = c.A0;
+        ushort x = m.ReadU16(rect), y = m.ReadU16(rect + 2);
+        ushort w = m.ReadU16(rect + 4), h = m.ReadU16(rect + 6);
+        if (w == 0 || h == 0) { c.V0 = 0u; return; }
+
+        gpu.WriteGp0(0x02000000u | ((c.A3 & 0xFFu) << 16) | ((c.A2 & 0xFFu) << 8) | (c.A1 & 0xFFu));
+        gpu.WriteGp0(((uint)y << 16) | x);
+        gpu.WriteGp0(((uint)h << 16) | w);
+
+        c.V0 = 0u;
     }
 
     static uint GetOfs(short x, short y)

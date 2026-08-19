@@ -41,6 +41,16 @@ public static class MainMenuBar
             .Submenu("menu.debug.gpu")
                 .Panel<OutputPanel>("panel.output")
                 .Panel<VramViewerPanel>("panel.vram_viewer")
+                .Panel<TextureInspectorPanel>("panel.texture_inspector")
+                .Separator()
+                .Check("menu.debug.dump_textures",
+                    static () => Assets.Textures.TextureDumper.Tiles,
+                    static on => Assets.Textures.TextureDumper.SetTiles(on))
+                    .Tooltip("menu.debug.dump_textures.tooltip")
+                .Check("menu.debug.dump_pages",
+                    static () => Assets.Textures.TextureDumper.Pages,
+                    static on => Assets.Textures.TextureDumper.SetPages(on))
+                    .Tooltip("menu.debug.dump_pages.tooltip")
                 .End()
             .Submenu("menu.debug.cpu")
                 .Panel<CpuStatePanel>("panel.cpu_state")

@@ -87,15 +87,25 @@ public sealed partial class Gpu
         int y = (int)((_fifo[1] >> 16) & 0x1FF);
         int w = (int)(((_fifo[2] & 0x3FF) + 0xF) & ~0xF);
         int h = (int)((_fifo[2] >> 16) & 0x1FF);
-        if (HleOn) { HleFill(x, y, w, h, color); return; }
 
-        for (int dy = 0; dy < h; dy++)
-            for (int dx = 0; dx < w; dx++)
-            {
-                int px = (x + dx) & (VramWidth - 1);
-                int py = (y + dy) & (VramHeight - 1);
-                Vram[py * VramWidth + px] = color;
-            }
+        if (x + w <= VramWidth)
+        {
+            for (int dy = 0; dy < h; dy++)
+                Vram.AsSpan(((y + dy) & (VramHeight - 1)) * VramWidth + x, w).Fill(color);
+        }
+        else
+        {
+            for (int dy = 0; dy < h; dy++)
+                for (int dx = 0; dx < w; dx++)
+                {
+                    int px = (x + dx) & (VramWidth - 1);
+                    int py = (y + dy) & (VramHeight - 1);
+                    Vram[py * VramWidth + px] = color;
+                }
+        }
+        Assets.Textures.VramTracker.MarkCpuWrite(x, y, w, h);
+
+        if (HleOn) HleFill(x, y, w, h, color);
     }
 
     void CopyVramToVram()
@@ -104,7 +114,6 @@ public sealed partial class Gpu
         int dx = (int)(_fifo[2] & 0x3FF), dy = (int)((_fifo[2] >> 16) & 0x1FF);
         int w = (int)(_fifo[3] & 0x3FF); if (w == 0) w = 0x400;
         int h = (int)((_fifo[3] >> 16) & 0x1FF); if (h == 0) h = 0x200;
-        if (HleOn) { HleCopy(sx, sy, dx, dy, w, h); return; }
         for (int row = 0; row < h; row++)
             for (int col = 0; col < w; col++)
             {
@@ -115,6 +124,9 @@ public sealed partial class Gpu
                 if (_setMask) px |= 0x8000;
                 Vram[d] = px;
             }
+        Assets.Textures.VramTracker.MarkCpuWrite(dx, dy, w, h);
+
+        if (HleOn) HleCopy(sx, sy, dx, dy, w, h);
     }
 
     void BeginImageLoad()
@@ -133,7 +145,6 @@ public sealed partial class Gpu
     {
         if (!_loadImage) return;
         ushort stored = _setMask ? (ushort)(value | 0x8000) : value;
-        if (!HleOn)   // gl mode uploads to gl vram via HleLoadPut
         {
             int x = (_loadX + (_loadPx % _loadW)) & (VramWidth - 1);
             int y = (_loadY + (_loadPx / _loadW)) & (VramHeight - 1);
@@ -142,7 +153,12 @@ public sealed partial class Gpu
                 Vram[idx] = stored;
         }
         HleLoadPut(stored);
-        if (++_loadPx >= _loadW * _loadH) { _loadImage = false; HleLoadFlush(); }
+        if (++_loadPx >= _loadW * _loadH)
+        {
+            _loadImage = false;
+            Assets.Textures.VramTracker.MarkCpuWrite(_loadX, _loadY, _loadW, _loadH);
+            HleLoadFlush();
+        }
     }
 
     void BeginImageRead()

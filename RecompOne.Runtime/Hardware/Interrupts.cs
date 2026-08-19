@@ -7,7 +7,40 @@ namespace RecompOne.Runtime;
 
 public static class Interrupts
 {
+    static bool _inHandler;
+    static readonly bool[] _pending = new bool[16];
+
     public static void Deliver(int irq, CpuContext cpu, IMemory mem)
+    {
+        if ((uint)irq >= _pending.Length) return;
+
+        if (_inHandler) { _pending[irq] = true; return; }
+
+        _inHandler = true;
+        try
+        {
+            Dispatch(irq, cpu, mem);
+
+            bool again = true;
+            while (again)
+            {
+                again = false;
+                for (int i = 0; i < _pending.Length; i++)
+                {
+                    if (!_pending[i]) continue;
+                    _pending[i] = false;
+                    Dispatch(i, cpu, mem);
+                    again = true;
+                }
+            }
+        }
+        finally
+        {
+            _inHandler = false;
+        }
+    }
+
+    static void Dispatch(int irq, CpuContext cpu, IMemory mem)
     {
         uint intrEnv = BiosB.IntrEnvInInterruptAddr;
         if (intrEnv == 0) return;

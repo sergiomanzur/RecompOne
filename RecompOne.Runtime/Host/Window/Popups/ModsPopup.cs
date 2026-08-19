@@ -24,6 +24,8 @@ public sealed class ModsPopup : Popup
 
     protected override void DrawContent()
     {
+        ModLoader.PollChanges();
+
         var mods = ModLoader.Mods;
         int active = 0;
         foreach (var mod in mods) if (mod.Loaded) active++;
@@ -35,7 +37,7 @@ public sealed class ModsPopup : Popup
             ImGui.TextDisabled($"-  {Localization.T("mods.active", active)}");
         }
 
-        var folder = Icons.Or(Icons.FolderOpen, "...");
+        var folder = FontSet.Or(FontSet.FolderOpen, "...");
         float folderWidth = ImGui.CalcTextSize(folder).X + ImGui.GetStyle().FramePadding.X * 2f;
         ImGui.SameLine(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - folderWidth);
         if (ImGui.SmallButton(folder)) OpenFolder();
@@ -240,7 +242,7 @@ public sealed class ModsPopup : Popup
         var col = active ? style.Colors[(int)ImGuiCol.CheckMark]
             : style.Colors[(int)(hovered ? ImGuiCol.Text : ImGuiCol.TextDisabled)];
 
-        Glyph(pos, Icons.Gear, ImGui.ColorConvertFloat4ToU32(col));
+        Glyph(pos, FontSet.Gear, ImGui.ColorConvertFloat4ToU32(col));
         return clicked;
     }
 
@@ -258,7 +260,7 @@ public sealed class ModsPopup : Popup
         bool hovered = ImGui.IsItemHovered();
 
         var style = ImGui.GetStyle();
-        Glyph(pos, Icons.Ellipsis, ImGui.ColorConvertFloat4ToU32(style.Colors[(int)(hovered ? ImGuiCol.Text : ImGuiCol.TextDisabled)]));
+        Glyph(pos, FontSet.Ellipsis, ImGui.ColorConvertFloat4ToU32(style.Colors[(int)(hovered ? ImGuiCol.Text : ImGuiCol.TextDisabled)]));
         return clicked;
     }
 

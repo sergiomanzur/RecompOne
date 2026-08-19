@@ -19,6 +19,9 @@ public static class Runtime
 
     public static RunMode Mode { get; private set; } = RunMode.Retail;
     public static void SetMode(RunMode mode) => Mode = mode; //devkit vs retail, devkits reads from sim and has more ram
+
+    public static uint RamSize { get; internal set; } = MemoryMap.RetailRamSize;
+    public static uint RamWordMask => (RamSize - 1) & ~3u;
     public static string CdPath => Config.ConfigManager.Game.CdPath;
 
     public static Func<string, string?>? DiscValidator;
@@ -129,6 +132,7 @@ public static class Runtime
 
         Sdk.LibCd.Reset();
         Sdk.LibCdStream.Reset();
+        Assets.Xa.XaRouter.Reset();
         Sdk.LibPad.Reset();
         Dispatch.Dispatcher.Reset();
         Bios.BiosB.Reset();

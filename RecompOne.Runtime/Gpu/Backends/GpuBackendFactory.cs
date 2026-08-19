@@ -2,7 +2,7 @@ using Silk.NET.OpenGL;
 
 namespace RecompOne.Runtime.Hle;
 //the idea is to drop gl45 is gl33 is stable enought, in the future maybe add vulkan and dx backend?
-public enum GlBackendKind { Auto, Gl45, Gl33 }
+public enum GlBackendKind { Auto, Gl45, Gl33, Gl21 }
 
 public static class GpuBackendFactory //fkn hate these factories
 {
@@ -10,9 +10,23 @@ public static class GpuBackendFactory //fkn hate these factories
 
     public static IGpuBackend Create(GL gl, GlBackendKind requested)
     {
+#if ANDROID
+        // GLES 3.0 reports itself as version 3.0, which the desktop probes below read as
+        // "older than 3.3" and would drop all the way to the GL 2.1 path - a compatibility
+        // profile that does not exist on Android at all. The Gl33 backend is the one whose
+        // feature set GLES 3.0 actually covers, and GlShaders rewrites its shaders to
+        // "#version 300 es" on the way in, so pin it here rather than probe.
+        GlBackendKind kind = GlBackendKind.Gl33;
+
+        // Phone GPUs are the ones most likely to cap texture size below the 4x VRAM
+        // texture, so the clamp that upstream applies only to gl21 is worth running here too.
+        ClampScaleToLimit(gl);
+#else
         bool has45 = Supports45(gl);
-        GlBackendKind kind = requested == GlBackendKind.Auto //if gl45 is not availble fallback to 33 so that it works 
-            ? (has45 ? GlBackendKind.Gl45 : GlBackendKind.Gl33)
+        bool has33 = ContextAtLeast(gl, 3, 3);
+
+        GlBackendKind kind = requested == GlBackendKind.Auto
+            ? (has45 ? GlBackendKind.Gl45 : has33 ? GlBackendKind.Gl33 : GlBackendKind.Gl21)
             : requested;
 
         if (kind == GlBackendKind.Gl45 && !has45)
@@ -20,11 +34,57 @@ public static class GpuBackendFactory //fkn hate these factories
             Console.WriteLine("[Gpu] gl45 requested but the support by your gpu is below 4.5, falling back to gl33");
             kind = GlBackendKind.Gl33;
         }
+        if (kind == GlBackendKind.Gl33 && !has33)
+        {
+            Console.WriteLine("[Gpu] gl33 requested but the context is below 3.3, falling back to gl21");
+            kind = GlBackendKind.Gl21;
+        }
+
+        if (kind == GlBackendKind.Gl21) ClampScaleToLimit(gl);
+#endif
 
         Selected = kind;
-        IGlVram vram = kind == GlBackendKind.Gl45 ? new Gl45Vram(gl) : new Gl33Vram(gl);
+        IGlVram vram = kind switch
+        {
+            GlBackendKind.Gl45 => new Gl45Vram(gl),
+            GlBackendKind.Gl33 => new Gl33Vram(gl),
+            _ => new Gl21Vram(gl),
+        };
         Console.WriteLine($"[Gpu] backend: {kind}");
-        return new GlCore(gl, vram);
+        return new GlCore(gl, vram, kind == GlBackendKind.Gl21);
+    }
+
+    static bool ContextAtLeast(GL gl, int wantMajor, int wantMinor)
+    {
+        try
+        {
+            int major = gl.GetInteger(GLEnum.MajorVersion);
+            int minor = gl.GetInteger(GLEnum.MinorVersion);
+            if (major > 0) return major > wantMajor || (major == wantMajor && minor >= wantMinor);
+        }
+        catch { }
+
+        string version = Str(gl, StringName.Version);
+        var parts = version.Split('.', ' ');
+        if (parts.Length >= 2 && int.TryParse(parts[0], out int m) && int.TryParse(parts[1], out int n))
+            return m > wantMajor || (m == wantMajor && n >= wantMinor);
+        return false;
+    }
+
+    //old gpus limit at 2048 so the 4x vram texture would not fit, im too tired to think about a better solutino so for now capping it to the limit
+    static void ClampScaleToLimit(GL gl)
+    {
+        int max;
+        try { max = gl.GetInteger(GLEnum.MaxTextureSize); }
+        catch { return; }
+        if (max <= 0) return;
+
+        while (GlVram.Scale > 1 &&
+               (VramShadow.Width * GlVram.Scale > max || VramShadow.Height * GlVram.Scale > max))
+        {
+            GlVram.Scale /= 2;
+            Console.WriteLine($"[Gpu] max texture size support is {max}, dropping the vram scale to {GlVram.Scale}");
+        }
     }
 
     static bool Supports45(GL gl)
@@ -80,6 +140,7 @@ public static class GpuBackendFactory //fkn hate these factories
     {
         "gl45" => GlBackendKind.Gl45,
         "gl33" => GlBackendKind.Gl33,
+        "gl21" => GlBackendKind.Gl21,
         _ => GlBackendKind.Auto,
     };
 }

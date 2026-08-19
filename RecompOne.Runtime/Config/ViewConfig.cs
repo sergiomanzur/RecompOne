@@ -50,10 +50,14 @@ public class ViewConfig
         set => SetBool("Fullscreen", value);
     }
 
-    public bool NativeResolution
+    public int RenderScale
     {
-        get => GetBool("NativeResolution");
-        set => SetBool("NativeResolution", value);
+        get
+        {
+            int v = (int)GetFloat("RenderScale", 4f);
+            return v < 1 ? 1 : v > 8 ? 8 : v;
+        }
+        set => SetFloat("RenderScale", value < 1 ? 1 : value > 8 ? 8 : value);
     }
 
     public bool VSync

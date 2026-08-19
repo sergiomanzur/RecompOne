@@ -19,6 +19,8 @@ public static class BiosB
     public static uint IntrEnvInInterruptAddr = 0u;
 
     static uint _padBuf;
+    static uint _padCardBuf1, _padCardBuf2;
+    static bool _padCardStarted;
 
     public static void Reset()
     {
@@ -27,6 +29,8 @@ public static class BiosB
         Array.Clear(_intChain);
         IntrEnvInInterruptAddr = 0u;
         _padBuf = 0u;
+        _padCardBuf1 = _padCardBuf2 = 0u;
+        _padCardStarted = false;
     }
 
     public static void DeliverEvent(uint @class, uint spec)
@@ -121,7 +125,58 @@ public static class BiosB
         m.WriteU8(_padBuf + 7, Hardware.Controller.LeftY);
     }
 
-    public static void RefreshPad(IMemory m) => PadRead(m);
+    static void InitPad(IMemory m, uint buf1, uint siz1, uint buf2, uint siz2)
+    {
+        _padCardBuf1 = buf1;
+        _padCardBuf2 = buf2;
+        for (uint i = 0; i < siz1; i++) m.WriteU8(buf1 + i, 0);
+        for (uint i = 0; i < siz2; i++) m.WriteU8(buf2 + i, 0);
+    }
+
+    static void PadCardIrq(IMemory m)
+    {
+        if (!_padCardStarted) return;
+
+        ushort b1 = Unswap(FirePad(m, 0, Swap(Hardware.Controller.State)));
+        WritePadSlot(m, _padCardBuf1, true, b1,
+            Hardware.Controller.RightX, Hardware.Controller.RightY,
+            Hardware.Controller.LeftX, Hardware.Controller.LeftY);
+
+        ushort b2 = Unswap(FirePad(m, 1, Swap(Hardware.Controller.State2)));
+        WritePadSlot(m, _padCardBuf2, Hardware.Controller.Connected2, b2,
+            Hardware.Controller.RightX2, Hardware.Controller.RightY2,
+            Hardware.Controller.LeftX2, Hardware.Controller.LeftY2);
+    }
+
+    static ushort Swap(ushort v) => (ushort)((v >> 8) | (v << 8));
+
+    static ushort Unswap(ushort v) => (ushort)((v >> 8) | (v << 8));
+
+    static void WritePadSlot(IMemory m, uint buf, bool connected, ushort buttons,
+        byte rx, byte ry, byte lx, byte ly)
+    {
+        if (buf == 0) return;
+        if (!connected)
+        {
+            m.WriteU8(buf, 0xFF);
+            m.WriteU8(buf + 1, 0);
+            return;
+        }
+        m.WriteU8(buf, 0);
+        m.WriteU8(buf + 1, 0x41);
+        m.WriteU8(buf + 2, (byte)buttons);
+        m.WriteU8(buf + 3, (byte)(buttons >> 8));
+        m.WriteU8(buf + 4, rx);
+        m.WriteU8(buf + 5, ry);
+        m.WriteU8(buf + 6, lx);
+        m.WriteU8(buf + 7, ly);
+    }
+
+    public static void RefreshPad(IMemory m)
+    {
+        PadRead(m);
+        PadCardIrq(m);
+    }
     public static void Dispatch(CpuContext c, IMemory m, uint fn)
     {
         Log.Bios($"B({fn:X2}) {BiosNames.B(fn)}");
@@ -145,9 +200,9 @@ public static class BiosB
             case 0x0F: CloseTh(c.A0); c.V0 = 1u; break;
             case 0x10: break;
             case 0x11: break;
-            case 0x12: break;
-            case 0x13: break;
-            case 0x14: break;
+            case 0x12: InitPad(m, c.A0, c.A1, c.A2, c.A3); break;
+            case 0x13: _padCardStarted = true; break;
+            case 0x14: _padCardStarted = false; break;
             case 0x15: _padBuf = c.A1; break;
             case 0x16: PadRead(m); break;
             case 0x17: break;

@@ -230,9 +230,10 @@ public static class Gte
                 SetMac(3, (long)IR3 * IR3, sf, lm);
                 break;
             case 0x0C:
-                SetMac(1, (long)RT[4] * IR3 - (long)RT[8] * IR2, sf, lm);
-                SetMac(2, (long)RT[8] * IR1 - (long)RT[0] * IR3, sf, lm);
-                SetMac(3, (long)RT[0] * IR2 - (long)RT[4] * IR1, sf, lm);
+                int ir1 = IR1, ir2 = IR2, ir3 = IR3;
+                SetMac(1, (long)RT[4] * ir3 - (long)RT[8] * ir2, sf, lm);
+                SetMac(2, (long)RT[8] * ir1 - (long)RT[0] * ir3, sf, lm);
+                SetMac(3, (long)RT[0] * ir2 - (long)RT[4] * ir1, sf, lm);
                 break;
             case 0x3D:
                 SetMac(1, (long)IR0 * IR1, sf, lm);

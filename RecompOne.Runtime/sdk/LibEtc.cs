@@ -14,8 +14,8 @@ public static class LibEtc
         int mode = (int)c.A0;
         Log.Sdk($"VSync({mode})");
         if (mode < 0) { c.V0 = (uint)_vcount; return; }
-        if (mode == 1) { c.V0 = 0; return; }
-
+        //if (mode == 1) { c.V0 = 0; return; }
+        
         Runtime.PresentFrame();
         _vcount++;
 

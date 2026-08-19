@@ -9,7 +9,7 @@ internal sealed class DisplaySettingsSection : ISettingsSection
     public string TitleKey => "settings.display";
     public int Order => 5;
 
-    static readonly string[] Backends = ["auto", "gl45", "gl33"];
+    static readonly string[] Backends = ["auto", "gl45", "gl33", "gl21"];
 
     public void Draw()
     {
@@ -30,15 +30,22 @@ internal sealed class DisplaySettingsSection : ISettingsSection
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.display.vsync_hint"));
 
-        bool native = ConfigManager.View.NativeResolution;
-        if (ImGui.Checkbox(Localization.T("settings.display.native_resolution"), ref native))
+        int scale = ConfigManager.View.RenderScale;
+        if (ImGui.SliderInt(Localization.T("settings.display.render_scale"), ref scale, 1, 8, "%dx"))
         {
-            ConfigManager.View.NativeResolution = native;
-            Hle.GpuHle.NativeResolution = native;
+            ConfigManager.View.RenderScale = scale;
             ConfigManager.SaveView(PanelManager.Panels);
             NoticePopup.Show(Localization.T("common.restart_required"));
         }
-        if (ConfigManager.View.NativeResolution != (Hle.GlVram.Scale == 1))
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.display.render_scale_hint"));
+
+        int lines = Hle.GpuHle.LastDisplayH;
+        int width = Hle.GpuHle.LastDisplayW;
+        if (lines > 0)
+            ImGui.TextDisabled(Localization.T("settings.display.render_scale_lines",
+                width, lines, width * scale, lines * scale, scale));
+
+        if (scale != Hle.GlVram.Scale)
             ImGui.TextDisabled(Localization.T("settings.display.restart_pending"));
 
         ImGui.Separator();

@@ -84,17 +84,15 @@ public sealed class Gl33Vram : IGlVram
         int x0 = Math.Max(x, 0), y0 = Math.Max(y, 0);
         if (x1 <= x0 || y1 <= y0) return destTex;
 
-        uint prev = (uint)_gl.GetInteger(GLEnum.DrawFramebufferBinding);
-        bool scissor = _gl.IsEnabled(EnableCap.ScissorTest);
+        uint targetFbo = FboFor(targetTex, isVram);
 
         _gl.Disable(EnableCap.ScissorTest);
-        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, FboFor(targetTex, isVram));
+        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, targetFbo);
         _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, destFbo);
         _gl.BlitFramebuffer(x0, y0, x1, y1, x0, y0, x1, y1,
             ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
 
-        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, prev);
-        if (scissor) _gl.Enable(EnableCap.ScissorTest);
+        _gl.Enable(EnableCap.ScissorTest);
         return destTex;
     }
 

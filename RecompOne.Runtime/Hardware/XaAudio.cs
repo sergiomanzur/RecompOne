@@ -99,6 +99,22 @@ public static class XaAudio
         }
     }
 
+    public static void PushFrames(int[] frames, int count, int rate)
+    {
+        lock (_gate)
+        {
+            _srcRate = rate;
+            for (int i = 0; i < count; i++)
+            {
+                _ring[_writeIdx] = frames[i];
+                _writeIdx = (_writeIdx + 1) & Mask;
+                if (_count < Capacity) _count++;
+                else _readIdx = (_readIdx + 1) & Mask;
+            }
+            if (!_playing && _count >= PrimeFrames) _playing = true;
+        }
+    }
+
     public static int BufferedSamples { get { lock (_gate) return _count; } }
 
     public static bool Playing { get { lock (_gate) return _playing; } }

@@ -14,7 +14,7 @@ public static class BiosA
     static uint _randSeed = 1;
     static uint _strtokPtr = 0;
 
-    static CueFs? _fs;
+    static DiscFs? _fs;
     static CdController? _cd;
     static readonly Dictionary<uint, (string name, byte[] data, int offset)> _openFiles = new();
     static readonly Dictionary<uint, (MemoryCard card, int[] chain, int size, int pos)> _cardFiles = new();
@@ -90,7 +90,7 @@ public static class BiosA
     static uint _confNumEvCB = 16, _confNumTCB = 4, _confStack = 0;
     public static uint LastErrno = 0;
 
-    public static void SetFs(CueFs fs) => _fs = fs;
+    public static void SetFs(DiscFs fs) => _fs = fs;
     public static void SetCd(CdController cd) => _cd = cd;
 
     //as in https://problemkaputt.de/psxspx-kernel-bios.htm
@@ -180,6 +180,12 @@ public static class BiosA
             case 0x03:
             {
                 uint fd = c.A0;
+                if (fd <= 2u && !_cardFiles.ContainsKey(fd))
+                {
+                    var w = fd == 2u ? Console.Error : Console.Out;
+                    for (uint i = 0; i < c.A2; i++) w.Write((char)m.ReadU8(c.A1 + i));
+                    c.V0 = c.A2; LastErrno = 0; break;
+                }
                 if (_cardFiles.TryGetValue(fd, out var cwe))
                 {
                     int n = (int)Math.Min(c.A2, (uint)(cwe.size - cwe.pos));

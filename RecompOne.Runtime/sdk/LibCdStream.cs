@@ -9,6 +9,7 @@ public static class LibCdStream
     const int HeaderSize = 32;
     const int SlotData = 2016;
     const ushort VideoMagic = 0x0160;
+    const int PrimeFrames = 2;
 
     public static bool InUse { get; private set; }
     static uint _statusBase;
@@ -23,6 +24,7 @@ public static class LibCdStream
     static readonly Stopwatch _clock = new();
 
     static int _writeIdx;
+    static bool _primed;
     static bool[] _busy = System.Array.Empty<bool>();
     static readonly Queue<(int start, int n)> _ready = new();
     static int _prevStart = -1, _prevN;
@@ -144,6 +146,7 @@ public static class LibCdStream
 
     static void ResetRing(IMemory m)
     {
+        _primed = false;
         _writeIdx = 0;
         _prevStart = -1;
         _prevN = 0;
@@ -184,14 +187,17 @@ public static class LibCdStream
             try { lock (LibCd.DiscLock) sec = cd.ReadSectorData(_streamLba, 2336); }
             catch { Thread.Sleep(2); continue; }
 
-            if ((sec[2] & 0x04) != 0) { XaAudio.DecodeSector(sec, 8, sec[3]); _streamLba++; continue; }
+            if ((sec[2] & 0x04) != 0) { Assets.Xa.XaRouter.Sector(_streamLba, sec, true); _streamLba++; continue; }
             if (Read16(sec, 8) != VideoMagic || Read16(sec, 12) != 0) { _streamLba++; continue; }
 
             int n = Read16(sec, 14);
             if (n <= 0 || n > _slots) { _streamLba++; continue; }
 
-            double delivered = _clock.Elapsed.TotalSeconds * LibCd.SectorsPerSecond;
-            if ((_streamLba - _streamStartLba) + n > delivered) { Thread.Sleep(1); continue; }
+            if (_primed)
+            {
+                double delivered = _clock.Elapsed.TotalSeconds * LibCd.SectorsPerSecond;
+                if ((_streamLba - _streamStartLba) + n > delivered) { Thread.Sleep(1); continue; }
+            }
 
             int start;
             lock (_lock)
@@ -210,6 +216,13 @@ public static class LibCdStream
                 for (int i = 0; i < n; i++) _busy[start + i] = true;
                 _ready.Enqueue((start, n));
                 _writeIdx = start + n;
+
+                if (!_primed && _ready.Count >= PrimeFrames)
+                {
+                    _primed = true;
+                    _streamStartLba = _streamLba;
+                    _clock.Restart();
+                }
             }
         }
     }
@@ -225,7 +238,7 @@ public static class LibCdStream
             catch { return false; }
             lba++;
 
-            if ((sec[2] & 0x04) != 0) { XaAudio.DecodeSector(sec, 8, sec[3]); continue; }
+            if ((sec[2] & 0x04) != 0) { Assets.Xa.XaRouter.Sector(lba - 1, sec, true); continue; }
             if (Read16(sec, 8) != VideoMagic) continue;
 
             uint hdr = _statusBase + (uint)((start + collected) * HeaderSize);

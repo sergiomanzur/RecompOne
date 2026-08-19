@@ -67,6 +67,14 @@ public sealed partial class Gpu
         int n = w * h;
         if (_readBuf.Length < n) _readBuf = new ushort[n];
         GpuHle.Backend!.ReadVram(x, y, w, h, _readBuf);
+
+        for (int row = 0; row < h; row++)
+        {
+            int dst = ((y + row) & (VramHeight - 1)) * VramWidth;
+            for (int col = 0; col < w; col++)
+                Vram[dst + ((x + col) & (VramWidth - 1))] = _readBuf[row * w + col];
+        }
+        Assets.Textures.VramTracker.MarkCpuWrite(x, y, w, h);
     }
 
     //img load

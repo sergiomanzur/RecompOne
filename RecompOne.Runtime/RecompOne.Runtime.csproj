@@ -16,13 +16,23 @@
     <ItemGroup>
       <EmbeddedResource Include="Bios\Fonts\font1.raw" />
       <EmbeddedResource Include="Bios\Fonts\font2.raw" />
-      <EmbeddedResource Include="Host\Window\Assets\fa-solid-900.ttf" />
       <EmbeddedResource Include="Host\Window\Assets\languages.json" />
+    </ItemGroup>
+
+    <!-- The ImGui UI is never drawn on Android - the port renders the game straight to the
+         view and puts its own native menu on top - so these three fonts would be 17 MB of
+         APK that nothing ever reads, most of it the CJK face. FontSet.Load is skipped there
+         to match. -->
+    <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+      <EmbeddedResource Include="Host\Window\Assets\fa-solid-900.ttf" />
+      <EmbeddedResource Include="Host\Window\Assets\NotoSans-Regular.ttf" />
+      <EmbeddedResource Include="Host\Window\Assets\NotoSansCJK-Regular.otf" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
       <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.6" />
+      <PackageReference Include="NVorbis" Version="0.10.5" />
       <PackageReference Include="Silk.NET" Version="2.22.0" />
       <PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.22.0" />
       <PackageReference Include="Silk.NET.SDL" Version="2.23.0" />

@@ -216,7 +216,9 @@ public sealed class Spu
                 0x6 => v.StartAddr,
                 0x8 => v.AdsrLo,
                 0xA => v.AdsrHi,
-                0xC => v.Phase == AdsrPhase.Attack && v.AdsrVol == 0 ? (ushort)1 : (ushort)v.AdsrVol,
+                0xC => (_konPending & (1u << n)) != 0 || (v.Phase == AdsrPhase.Attack && v.AdsrVol == 0)
+                    ? (ushort)1
+                    : (ushort)v.AdsrVol,
                 0xE => v.RepeatAddr,
                 _ => 0
             };
@@ -307,36 +309,52 @@ public sealed class Spu
         }
     }
 
+    uint _konPending, _koffPending;
+
     void KeyOn(ushort mask, bool hi)
     {
-        int b = hi ? 16 : 0;
-        for (int i = 0; i < (hi ? 8 : 16); i++)
-        {
-            if ((mask & (1 << i)) == 0) continue;
-            var v = _v[b + i];
-            v.Phase = AdsrPhase.Attack;
-            v.AdsrVol = 0;
-            v.AdsrCycleCount = 0;
-            v.CurAddr = (uint)v.StartAddr << 3;
-            v.IgnoreLoop = false;
-            v.PitchCounter = 0;
-            v.Old = v.Older = 0;
-            v.HasBlock = false;
-            v.EndX = false;
-            _endx &= ~(1u << (b + i));
-        }
+        uint bits = (uint)mask << (hi ? 16 : 0);
+        _konPending |= bits;
+        _koffPending &= ~bits;
+        _endx &= ~bits;
     }
 
     void KeyOff(ushort mask, bool hi)
     {
-        int b = hi ? 16 : 0;
-        for (int i = 0; i < (hi ? 8 : 16); i++)
+        uint bits = (uint)mask << (hi ? 16 : 0);
+        _koffPending |= bits & ~_konPending;
+    }
+
+    void ResolveKeys()
+    {
+        if (_konPending == 0 && _koffPending == 0) return;
+
+        for (int i = 0; i < 24; i++)
         {
-            if ((mask & (1 << i)) == 0) continue;
-            var v = _v[b + i];
-            if (v.Phase != AdsrPhase.Off)
-                v.Phase = AdsrPhase.Release;
+            uint bit = 1u << i;
+            if ((_konPending & bit) != 0)
+            {
+                var v = _v[i];
+                v.Phase = AdsrPhase.Attack;
+                v.AdsrVol = 0;
+                v.AdsrCycleCount = 0;
+                v.CurAddr = (uint)v.StartAddr << 3;
+                v.IgnoreLoop = false;
+                v.PitchCounter = 0;
+                v.Old = v.Older = 0;
+                v.HasBlock = false;
+                v.EndX = false;
+                _endx &= ~bit;
+            }
+            else if ((_koffPending & bit) != 0)
+            {
+                var v = _v[i];
+                if (v.Phase != AdsrPhase.Off) v.Phase = AdsrPhase.Release;
+            }
         }
+
+        _konPending = 0;
+        _koffPending = 0;
     }
 
     public uint TransferAddrBytes() => (uint)_transferAddr << 3;
@@ -435,6 +453,7 @@ public sealed class Spu
 
     (short L, short R) Tick()
     {
+        ResolveKeys();
         TickNoise();
         int sumL = 0, sumR = 0;
 
