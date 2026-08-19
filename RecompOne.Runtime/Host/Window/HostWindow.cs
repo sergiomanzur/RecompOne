@@ -328,6 +328,23 @@ public static class HostWindow
 
     public static bool IsKeyDown(Key k) => InputManager.IsKeyDown(k);
 
+    /// <summary>Number of attached pads the game can actually drive.</summary>
+    public static int ConnectedPadCount => InputManager.Devices.Count;
+
+    /// <summary>True when the given player slot has a pad open.</summary>
+    public static bool IsPadConnected(int pad) => InputManager.IsPadConnected(pad);
+
+    /// <summary>
+    /// Every joystick the system reports, and whether SDL has a button mapping for it. A host
+    /// with no console to read - the Android build - needs this to tell "no pad attached"
+    /// apart from "pad attached that we cannot drive".
+    /// </summary>
+    public static IReadOnlyList<(int Index, string Name, bool IsGameController)> DescribeJoysticks()
+        => InputManager.DescribeJoysticks();
+
+    /// <summary>Re-opens controllers now instead of waiting for the next device change.</summary>
+    public static void RescanControllers() => InputManager.RefreshDevices();
+
     public static void RequestDiscPath() => PopupManager.Open<DiscPickerPopup>();
 
     public static void WaitForValidDisc() // wait for disc path to be valid before running it!!

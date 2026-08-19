@@ -65,7 +65,11 @@ internal static unsafe class InputManager
             _sdl.InitSubSystem(Sdl.InitGamecontroller);
             Rescan();
         }
-        catch { _sdl = null; }
+        catch (Exception e)
+        {
+            Console.Error.WriteLine($"[Input] SDL gamecontroller unavailable: {e.Message}");
+            _sdl = null;
+        }
     }
 
     public static bool IsConnected => _pad0 != null;
@@ -76,6 +80,7 @@ internal static unsafe class InputManager
 
     public static void Poll()
     {
+        PollDeviceChanges();
         PollGamepadEvents();
 #if ANDROID
         PollAndroid();
@@ -84,7 +89,25 @@ internal static unsafe class InputManager
         PollGamepads();
 #endif
         Controller.Connected2 = _pad1 != null || HasAnyKey(ConfigManager.Game.Keys2);
+        ClearSdlError();
     }
+
+    /// <summary>
+    /// Drops whatever SDL left in its error slot while we were reading input.
+    ///
+    /// SDL's error string is sticky - it survives until something overwrites or clears it -
+    /// and plenty of calls here set it while still succeeding. Opening a pad whose mapping
+    /// contains an element this SDL build does not know leaves "Unexpected controller element
+    /// crc" behind, with the pad opened and working.
+    ///
+    /// That matters because Silk does not check return codes. Its SdlContext.FramebufferSize
+    /// getter calls ThrowError(), which throws whenever SDL_GetError() is non-empty - so a
+    /// stale error from our polling surfaces as an exception inside the next OnRender, on a
+    /// call that did not fail. That killed the game thread one frame after a controller was
+    /// opened. Nothing here inspects SDL errors, so clearing them is free and keeps our
+    /// noise from being misread as somebody else's failure.
+    /// </summary>
+    static void ClearSdlError() => _sdl?.ClearError();
 
 #if ANDROID
     // Android has two independent producers: the physical pad through SDL and the
@@ -170,6 +193,38 @@ internal static unsafe class InputManager
         _sdl = null;
     }
 
+    static int _joystickCount = -1;
+
+    /// <summary>
+    /// Notices controllers being attached and detached by watching SDL's device count.
+    ///
+    /// Detection used to depend entirely on SDL_CONTROLLERDEVICEADDED reaching
+    /// PollGamepadEvents below. That works on desktop, where the window is GLFW and nothing
+    /// else touches the SDL event queue. On Android the window IS an SDL view, so Silk drains
+    /// that same queue in DoEvents() on the line directly above every InputManager.Poll()
+    /// call - the add event was always gone before we looked. Rescan() therefore ran exactly
+    /// once, during Initialize, which on Android is before the Java side has enumerated a
+    /// single InputDevice. A pad plugged in after launch - which is every USB-C pad, since
+    /// you attach it to a phone that is already running - was never opened at all.
+    ///
+    /// The device count comes from SDL's own list rather than the queue, so no other consumer
+    /// can swallow it.
+    /// </summary>
+    static void PollDeviceChanges()
+    {
+        if (_sdl == null) return;
+
+        // Also what drives SDL's detection pass: on Android this is the call that asks the
+        // Java side to enumerate InputDevices, so the count below reflects what is attached
+        // now rather than what was attached at startup.
+        _sdl.GameControllerUpdate();
+
+        int n = _sdl.NumJoysticks();
+        if (n == _joystickCount) return;
+        _joystickCount = n;
+        Rescan();
+    }
+
     static void PollGamepadEvents()
     {
         if (_sdl == null) return;
@@ -196,7 +251,9 @@ internal static unsafe class InputManager
                     Value = ev.Caxis.Value / 32768f,
                 });
         }
-        if (changed) Rescan();
+        // Leave the rescan to PollDeviceChanges rather than doing it here too, so a plug-in
+        // that both the queue and the device count notice still only reopens the pads once.
+        if (changed) _joystickCount = -1;
     }
 
     static void CloseControllers()
@@ -214,7 +271,13 @@ internal static unsafe class InputManager
         get { lock (_devices) return _devices.ToArray(); }
     }
 
-    public static void RefreshDevices() => Rescan();
+    /// <summary>
+    /// Asks for the pads to be reopened on the next Poll rather than doing it here. Rescan
+    /// closes and reopens the SDL controller handles the game thread is reading every frame,
+    /// and this is called from whatever thread drew the settings UI - on Android that is the
+    /// Android UI thread, so doing the work inline would free a handle out from under a read.
+    /// </summary>
+    public static void RefreshDevices() => _joystickCount = -1;
 
     static string DeviceId(int joystickIndex)
     {
@@ -240,6 +303,7 @@ internal static unsafe class InputManager
 
         var found = new List<(int Index, string Id, string Name)>();
         int n = _sdl.NumJoysticks();
+        _joystickCount = n; // seeds the count for the Initialize call, which comes straight here
         for (int i = 0; i < n; i++)
         {
             if (_sdl.IsGameController(i) != SdlBool.True) continue;
@@ -255,6 +319,34 @@ internal static unsafe class InputManager
         var used = new HashSet<int>();
         _pad0 = OpenFor(found, ConfigManager.Game.PadDevice, used);
         _pad1 = OpenFor(found, ConfigManager.Game.PadDevice2, used);
+
+        // Sticks are polled, buttons are read through a mapping, and a device SDL has no
+        // mapping for is skipped above - so "nothing happens" has several possible causes and
+        // no symptom to tell them apart. Record what was actually seen.
+        Console.WriteLine($"[Input] {n} joystick(s), {found.Count} usable as game controllers, " +
+                          $"pad0={(_pad0 != null ? "open" : "none")} pad1={(_pad1 != null ? "open" : "none")}");
+        foreach (var (index, name, isPad) in DescribeJoysticks())
+            Console.WriteLine($"[Input]   joystick {index}: '{name}' gamecontroller={isPad}");
+
+        // Opening pads is the call most likely to leave an error behind, and Rescan also runs
+        // from Initialize - before the first Poll, but after which OnLoad reads FramebufferSize.
+        ClearSdlError();
+    }
+
+    /// <summary>
+    /// Every attached joystick and whether SDL can drive it as a game controller. A device
+    /// that is present but not a game controller is invisible to the game, and this is the
+    /// only way to tell that apart from one the system never enumerated.
+    /// </summary>
+    public static IReadOnlyList<(int Index, string Name, bool IsGameController)> DescribeJoysticks()
+    {
+        var list = new List<(int, string, bool)>();
+        if (_sdl == null) return list;
+        int n = _sdl.NumJoysticks();
+        for (int i = 0; i < n; i++)
+            list.Add((i, _sdl.JoystickNameForIndexS(i) ?? $"Joystick {i}",
+                      _sdl.IsGameController(i) == SdlBool.True));
+        return list;
     }
 
     static GameController* OpenFor(List<(int Index, string Id, string Name)> found, string wanted, HashSet<int> used)
