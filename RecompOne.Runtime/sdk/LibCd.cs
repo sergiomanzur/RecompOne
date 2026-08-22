@@ -205,6 +205,116 @@ public static class LibCd
         }
     }
 
+    /// <summary>
+    /// The drive state that decides which XA audio is playing.
+    ///
+    /// PumpXa streams from CurrentLba - which is Pos below - filtered by FilterFile and
+    /// FilterChannel and gated by Mode and ReadActive. None of that lives in the emulated
+    /// console's RAM, so a savestate that restored only RAM left the drive pointed wherever
+    /// the current session had it. Three quarters of this disc is XA audio: the music is
+    /// streamed, not sequenced, so the drive position IS the music.
+    ///
+    /// The symptom was oddly specific. Load a state from the main menu and the menu's music
+    /// carried on over the restored room, because the pump was still walking the menu's
+    /// sectors; walk into the next room and it corrected itself, because that made the game
+    /// issue Setloc/Setfilter/ReadS again. On a freshly launched app the position could still
+    /// be near the start of the disc, where the first XA content is the opening narration.
+    /// </summary>
+    public sealed class CdState
+    {
+        const int Version = 1;
+
+        public byte[] Pos = new byte[4];
+        public byte[] LastResult = new byte[8];
+        public byte Status, Mode, Com;
+        public int LastIntr;
+        public uint CbSync, CbReady, CbData;
+        public bool ReadActive, XaActive;
+        public byte FilterFile, FilterChannel;
+
+        public void WriteTo(BinaryWriter w)
+        {
+            w.Write(Version);
+            w.Write(Pos.Length); w.Write(Pos);
+            w.Write(LastResult.Length); w.Write(LastResult);
+            w.Write(Status); w.Write(Mode); w.Write(Com);
+            w.Write(LastIntr);
+            w.Write(CbSync); w.Write(CbReady); w.Write(CbData);
+            w.Write(ReadActive); w.Write(XaActive);
+            w.Write(FilterFile); w.Write(FilterChannel);
+        }
+
+        public static CdState ReadFrom(BinaryReader r)
+        {
+            int version = r.ReadInt32();
+            if (version != Version)
+                throw new InvalidDataException($"unsupported cd state version {version}");
+
+            var s = new CdState();
+            s.Pos = r.ReadBytes(r.ReadInt32());
+            s.LastResult = r.ReadBytes(r.ReadInt32());
+            s.Status = r.ReadByte(); s.Mode = r.ReadByte(); s.Com = r.ReadByte();
+            s.LastIntr = r.ReadInt32();
+            s.CbSync = r.ReadUInt32(); s.CbReady = r.ReadUInt32(); s.CbData = r.ReadUInt32();
+            s.ReadActive = r.ReadBoolean(); s.XaActive = r.ReadBoolean();
+            s.FilterFile = r.ReadByte(); s.FilterChannel = r.ReadByte();
+            return s;
+        }
+    }
+
+    public static CdState SnapshotState()
+    {
+        var s = new CdState
+        {
+            Status = _status,
+            Mode = _mode,
+            Com = _com,
+            LastIntr = _lastIntr,
+            CbSync = _cbSync,
+            CbReady = _cbReady,
+            CbData = _cbData,
+            ReadActive = _readActive,
+            XaActive = _xaActive,
+            FilterFile = _filterFile,
+            FilterChannel = _filterChannel,
+        };
+        lock (_posGate) _pos.CopyTo(s.Pos, 0);
+        _lastResult.CopyTo(s.LastResult, 0);
+        return s;
+    }
+
+    public static void RestoreState(CdState s)
+    {
+        lock (_posGate)
+            Array.Copy(s.Pos, _pos, Math.Min(s.Pos.Length, _pos.Length));
+        Array.Copy(s.LastResult, _lastResult, Math.Min(s.LastResult.Length, _lastResult.Length));
+
+        _status = s.Status;
+        _mode = s.Mode;
+        _com = s.Com;
+        _lastIntr = s.LastIntr;
+        _cbSync = s.CbSync;
+        _cbReady = s.CbReady;
+        _cbData = s.CbData;
+        _readActive = s.ReadActive;
+        _xaActive = s.XaActive;
+        _filterFile = s.FilterFile;
+        _filterChannel = s.FilterChannel;
+        _carrierMiss = 0;
+
+        // Throw away the PCM that was decoded from wherever the drive used to be, and make the
+        // router re-latch onto the restored stream, so the previous music does not play out on
+        // top of the new one. Both refill themselves from the sectors the pump reads next.
+        //
+        // Flushing these used to be actively harmful - it stopped streamed audio for the rest
+        // of the session - because the drive position was not restored, so no further sectors
+        // ever arrived to refill them. With the position above restored they do.
+        XaAudio.Reset();
+        Assets.Xa.XaRouter.Reset();
+
+        if (_readActive) EnsureXaThread();
+    }
+
     static void EnsureXaThread()
     {
         if (_xaThread is { IsAlive: true }) return;
