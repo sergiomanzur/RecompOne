@@ -195,6 +195,234 @@ public sealed class Spu
         }
     }
 
+    /// <summary>One voice, as a savestate needs it.</summary>
+    public struct VoiceState
+    {
+        public ushort VolL, VolR, Pitch, StartAddr, RepeatAddr, AdsrLo, AdsrHi;
+        public short AdsrVol;
+        public uint CurAddr, PitchCounter;
+        public int Phase, AdsrCycleCount;
+        public bool EndX, IgnoreLoop, HasBlock;
+        public int Old, Older;
+        public short CurVolL, CurVolR;
+        public int VolCycL, VolCycR;
+        public short[] Buf;
+    }
+
+    /// <summary>
+    /// Everything the SPU owns that a savestate has to carry: the 512 KB of sample RAM, the
+    /// 24 voices, and the registers the game writes once during init and then relies on for
+    /// the rest of the session.
+    ///
+    /// The sample RAM is the part that matters most and the part that is least obvious. The
+    /// game uploads an area's samples once, on entering it, and afterwards only tells the SPU
+    /// which address to key a voice at. Restore the game's RAM without restoring the SPU's and
+    /// those addresses point into whatever the previous session happened to leave there.
+    ///
+    /// Player-facing volume - VoiceVolume and XaVolume - is deliberately not here. Those are
+    /// settings, not console state, and loading a state must not move the player's sliders.
+    /// </summary>
+    public sealed class StateSnapshot
+    {
+        const int Version = 1;
+
+        public byte[] Ram = [];
+        public VoiceState[] Voices = [];
+
+        public ushort MainVolL, MainVolR;
+        public short MainCurL, MainCurR;
+        public int MainCycL, MainCycR;
+        public ushort ReverbVolL, ReverbVolR;
+        public ushort Kon, KonHi, Koff, KoffHi, Pmon, PmonHi, Non, NonHi, Eon, EonHi;
+        public uint Endx;
+        public ushort Spucnt, TransferAddr, TransferCtrl;
+        public ushort CdVolL, CdVolR, ExtVolL, ExtVolR;
+        public int CdMixLL, CdMixLR, CdMixRL, CdMixRR;
+        public ushort ReverbStartAddr;
+        public int NoiseLevel, NoiseTimer;
+        public uint KonPending, KoffPending;
+
+        // Read and write live next to each other on purpose. This is forty-odd fields plus a
+        // voice array, and the failure mode for two hand-written halves drifting apart is a
+        // savestate that loads with the fields silently shifted rather than an error.
+        public void WriteTo(BinaryWriter w)
+        {
+            w.Write(Version);
+            w.Write(Ram.Length);
+            w.Write(Ram);
+
+            w.Write(Voices.Length);
+            foreach (var v in Voices)
+            {
+                w.Write(v.VolL); w.Write(v.VolR); w.Write(v.Pitch);
+                w.Write(v.StartAddr); w.Write(v.RepeatAddr);
+                w.Write(v.AdsrLo); w.Write(v.AdsrHi); w.Write(v.AdsrVol);
+                w.Write(v.CurAddr); w.Write(v.PitchCounter);
+                w.Write(v.Phase); w.Write(v.AdsrCycleCount);
+                w.Write(v.EndX); w.Write(v.IgnoreLoop); w.Write(v.HasBlock);
+                w.Write(v.Old); w.Write(v.Older);
+                w.Write(v.CurVolL); w.Write(v.CurVolR);
+                w.Write(v.VolCycL); w.Write(v.VolCycR);
+                w.Write(v.Buf.Length);
+                foreach (short sample in v.Buf) w.Write(sample);
+            }
+
+            w.Write(MainVolL); w.Write(MainVolR);
+            w.Write(MainCurL); w.Write(MainCurR);
+            w.Write(MainCycL); w.Write(MainCycR);
+            w.Write(ReverbVolL); w.Write(ReverbVolR);
+            w.Write(Kon); w.Write(KonHi); w.Write(Koff); w.Write(KoffHi);
+            w.Write(Pmon); w.Write(PmonHi); w.Write(Non); w.Write(NonHi);
+            w.Write(Eon); w.Write(EonHi);
+            w.Write(Endx);
+            w.Write(Spucnt); w.Write(TransferAddr); w.Write(TransferCtrl);
+            w.Write(CdVolL); w.Write(CdVolR); w.Write(ExtVolL); w.Write(ExtVolR);
+            w.Write(CdMixLL); w.Write(CdMixLR); w.Write(CdMixRL); w.Write(CdMixRR);
+            w.Write(ReverbStartAddr);
+            w.Write(NoiseLevel); w.Write(NoiseTimer);
+            w.Write(KonPending); w.Write(KoffPending);
+        }
+
+        public static StateSnapshot ReadFrom(BinaryReader r)
+        {
+            int version = r.ReadInt32();
+            if (version != Version)
+                throw new InvalidDataException($"unsupported spu state version {version}");
+
+            var s = new StateSnapshot();
+            s.Ram = r.ReadBytes(r.ReadInt32());
+
+            int voices = r.ReadInt32();
+            s.Voices = new VoiceState[voices];
+            for (int i = 0; i < voices; i++)
+            {
+                var v = new VoiceState();
+                v.VolL = r.ReadUInt16(); v.VolR = r.ReadUInt16(); v.Pitch = r.ReadUInt16();
+                v.StartAddr = r.ReadUInt16(); v.RepeatAddr = r.ReadUInt16();
+                v.AdsrLo = r.ReadUInt16(); v.AdsrHi = r.ReadUInt16(); v.AdsrVol = r.ReadInt16();
+                v.CurAddr = r.ReadUInt32(); v.PitchCounter = r.ReadUInt32();
+                v.Phase = r.ReadInt32(); v.AdsrCycleCount = r.ReadInt32();
+                v.EndX = r.ReadBoolean(); v.IgnoreLoop = r.ReadBoolean(); v.HasBlock = r.ReadBoolean();
+                v.Old = r.ReadInt32(); v.Older = r.ReadInt32();
+                v.CurVolL = r.ReadInt16(); v.CurVolR = r.ReadInt16();
+                v.VolCycL = r.ReadInt32(); v.VolCycR = r.ReadInt32();
+                v.Buf = new short[r.ReadInt32()];
+                for (int j = 0; j < v.Buf.Length; j++) v.Buf[j] = r.ReadInt16();
+                s.Voices[i] = v;
+            }
+
+            s.MainVolL = r.ReadUInt16(); s.MainVolR = r.ReadUInt16();
+            s.MainCurL = r.ReadInt16(); s.MainCurR = r.ReadInt16();
+            s.MainCycL = r.ReadInt32(); s.MainCycR = r.ReadInt32();
+            s.ReverbVolL = r.ReadUInt16(); s.ReverbVolR = r.ReadUInt16();
+            s.Kon = r.ReadUInt16(); s.KonHi = r.ReadUInt16();
+            s.Koff = r.ReadUInt16(); s.KoffHi = r.ReadUInt16();
+            s.Pmon = r.ReadUInt16(); s.PmonHi = r.ReadUInt16();
+            s.Non = r.ReadUInt16(); s.NonHi = r.ReadUInt16();
+            s.Eon = r.ReadUInt16(); s.EonHi = r.ReadUInt16();
+            s.Endx = r.ReadUInt32();
+            s.Spucnt = r.ReadUInt16(); s.TransferAddr = r.ReadUInt16(); s.TransferCtrl = r.ReadUInt16();
+            s.CdVolL = r.ReadUInt16(); s.CdVolR = r.ReadUInt16();
+            s.ExtVolL = r.ReadUInt16(); s.ExtVolR = r.ReadUInt16();
+            s.CdMixLL = r.ReadInt32(); s.CdMixLR = r.ReadInt32();
+            s.CdMixRL = r.ReadInt32(); s.CdMixRR = r.ReadInt32();
+            s.ReverbStartAddr = r.ReadUInt16();
+            s.NoiseLevel = r.ReadInt32(); s.NoiseTimer = r.ReadInt32();
+            s.KonPending = r.ReadUInt32(); s.KoffPending = r.ReadUInt32();
+            return s;
+        }
+    }
+
+    public StateSnapshot SnapshotState()
+    {
+        lock (_sync)
+        {
+            var s = new StateSnapshot
+            {
+                Ram = (byte[])Ram.Clone(),
+                Voices = new VoiceState[_v.Length],
+                MainVolL = _mainVolL, MainVolR = _mainVolR,
+                MainCurL = _mainCurL, MainCurR = _mainCurR,
+                MainCycL = _mainCycL, MainCycR = _mainCycR,
+                ReverbVolL = _reverbVolL, ReverbVolR = _reverbVolR,
+                Kon = _kon, KonHi = _konHi, Koff = _koff, KoffHi = _koffHi,
+                Pmon = _pmon, PmonHi = _pmonHi, Non = _non, NonHi = _nonHi,
+                Eon = _eon, EonHi = _eonHi,
+                Endx = _endx,
+                Spucnt = _spucnt, TransferAddr = _transferAddr, TransferCtrl = _transferCtrl,
+                CdVolL = _cdVolL, CdVolR = _cdVolR, ExtVolL = _extVolL, ExtVolR = _extVolR,
+                CdMixLL = _cdMixLL, CdMixLR = _cdMixLR, CdMixRL = _cdMixRL, CdMixRR = _cdMixRR,
+                ReverbStartAddr = _reverbStartAddr,
+                NoiseLevel = _noiseLevel, NoiseTimer = _noiseTimer,
+                KonPending = _konPending, KoffPending = _koffPending,
+            };
+
+            for (int i = 0; i < _v.Length; i++)
+            {
+                var v = _v[i];
+                s.Voices[i] = new VoiceState
+                {
+                    VolL = v.VolL, VolR = v.VolR, Pitch = v.Pitch,
+                    StartAddr = v.StartAddr, RepeatAddr = v.RepeatAddr,
+                    AdsrLo = v.AdsrLo, AdsrHi = v.AdsrHi, AdsrVol = v.AdsrVol,
+                    CurAddr = v.CurAddr, PitchCounter = v.PitchCounter,
+                    Phase = (int)v.Phase, AdsrCycleCount = v.AdsrCycleCount,
+                    EndX = v.EndX, IgnoreLoop = v.IgnoreLoop, HasBlock = v.HasBlock,
+                    Old = v.Old, Older = v.Older,
+                    CurVolL = v.CurVolL, CurVolR = v.CurVolR,
+                    VolCycL = v.VolCycL, VolCycR = v.VolCycR,
+                    Buf = (short[])v.Buf.Clone(),
+                };
+            }
+
+            return s;
+        }
+    }
+
+    public void RestoreState(StateSnapshot s)
+    {
+        lock (_sync)
+        {
+            if (s.Ram.Length > 0)
+                Array.Copy(s.Ram, Ram, Math.Min(s.Ram.Length, Ram.Length));
+
+            for (int i = 0; i < _v.Length && i < s.Voices.Length; i++)
+            {
+                var src = s.Voices[i];
+                var v = _v[i];
+                v.VolL = src.VolL; v.VolR = src.VolR; v.Pitch = src.Pitch;
+                v.StartAddr = src.StartAddr; v.RepeatAddr = src.RepeatAddr;
+                v.AdsrLo = src.AdsrLo; v.AdsrHi = src.AdsrHi; v.AdsrVol = src.AdsrVol;
+                v.CurAddr = src.CurAddr; v.PitchCounter = src.PitchCounter;
+                v.Phase = (AdsrPhase)src.Phase; v.AdsrCycleCount = src.AdsrCycleCount;
+                v.EndX = src.EndX; v.IgnoreLoop = src.IgnoreLoop; v.HasBlock = src.HasBlock;
+                v.Old = src.Old; v.Older = src.Older;
+                v.CurVolL = src.CurVolL; v.CurVolR = src.CurVolR;
+                v.VolCycL = src.VolCycL; v.VolCycR = src.VolCycR;
+                if (src.Buf != null)
+                    Array.Copy(src.Buf, v.Buf, Math.Min(src.Buf.Length, v.Buf.Length));
+            }
+
+            _mainVolL = s.MainVolL; _mainVolR = s.MainVolR;
+            _mainCurL = s.MainCurL; _mainCurR = s.MainCurR;
+            _mainCycL = s.MainCycL; _mainCycR = s.MainCycR;
+            _reverbVolL = s.ReverbVolL; _reverbVolR = s.ReverbVolR;
+            _kon = s.Kon; _konHi = s.KonHi; _koff = s.Koff; _koffHi = s.KoffHi;
+            _pmon = s.Pmon; _pmonHi = s.PmonHi; _non = s.Non; _nonHi = s.NonHi;
+            _eon = s.Eon; _eonHi = s.EonHi;
+            _endx = s.Endx;
+            _spucnt = s.Spucnt; _transferAddr = s.TransferAddr; _transferCtrl = s.TransferCtrl;
+            _cdVolL = s.CdVolL; _cdVolR = s.CdVolR; _extVolL = s.ExtVolL; _extVolR = s.ExtVolR;
+            _cdMixLL = s.CdMixLL; _cdMixLR = s.CdMixLR; _cdMixRL = s.CdMixRL; _cdMixRR = s.CdMixRR;
+            _reverbStartAddr = s.ReverbStartAddr;
+            _noiseLevel = s.NoiseLevel; _noiseTimer = s.NoiseTimer;
+
+            // Any key-on or key-off the mixer had not applied yet belonged to the moment the
+            // state was taken, so it comes back with it.
+            _konPending = s.KonPending; _koffPending = s.KoffPending;
+        }
+    }
+
     public ushort ReadReg16(uint phys)
     {
         lock (_sync) return ReadReg(phys);
